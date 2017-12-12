@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<beans xmlns="http://www.springframework.org/schema/beans"
+xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:p="http://www.springframework.org/schema/p"
+xmlns:tx="http://www.springframework.org/schema/tx" xmlns:aop="http://www.springframework.org/schema/aop"
+xmlns:context="http://www.springframework.org/schema/context"
+xsi:schemaLocation="http://www.springframework.org/schema/beans
+http://www.springframework.org/schema/beans/spring-beans-2.5.xsd
+http://www.springframework.org/schema/tx
+http://www.springframework.org/schema/tx/spring-tx-2.5.xsd
+http://www.springframework.org/schema/aop
+http://www.springframework.org/schema/aop/spring-aop-2.5.xsd">
+<bean id="routeService" class="org.bcos.channel.client.Service">
+	<property name="orgID" value="WB" />
+	<property name="allChannelConnections">
+		<map>
+		<entry key="WB">
+			<bean class="org.bcos.channel.handler.ChannelConnections">
+				<property name="connectionsStr">
+					<list>
+						<value>50f720ddd5d2f7feefb22bf62011a73878f80180d56bd7f4deab58173847c442b35256634950497a0208dacd3ff6ed1a2a31e97976d8dddbd64dc124a6e8a284@127.0.0.1:30339</value>
+					</list>
+				</property>
+			</bean>
+		</entry>
+		</map>
+	</property>
+</bean>
+
+<bean id="hotService" class="org.bcos.channel.client.Service">
+	<property name="orgID" value="WB" />
+	<property name="allChannelConnections">
+		<map>
+		<entry key="WB">
+			<bean class="org.bcos.channel.handler.ChannelConnections">
+				<property name="connectionsStr">
+					<list>
+						<value>23142aac805fa2ef9bee4a7b9489445e2706628c1b93a2a678162c187bed19028e1ce6da1f455d5d49014e6075c3a98ae143b793081eb42aee66ca5773e6f4a5@127.0.0.1:30340</value>
+					</list>
+				</property>
+			</bean>
+		</entry>
+		</map>
+	</property>
+</bean>
+
+<bean id="set1Service" class="org.bcos.channel.client.Service">
+	<property name="orgID" value="WB" />
+	<property name="allChannelConnections">
+		<map>
+		<entry key="WB">
+			<bean class="org.bcos.channel.handler.ChannelConnections">
+				<property name="connectionsStr">
+					<list>
+						<value>fc292d42da074834fb37b850704b45f4a2a4efe15d50ca36c6ac9ddd63c9ce029cf9ac38e72917e162a8fa7449ec8df43a1df616702b0197e6bd5d9c0a1ae8d2@127.0.0.1:30338</value>
+					</list>
+				</property>
+			</bean>
+		</entry>
+		</map>
+	</property>
+</bean>
+
+<bean id="set2Service" class="org.bcos.channel.client.Service">
+	<property name="orgID" value="WB" />
+	<property name="allChannelConnections">
+		<map>
+		<entry key="WB">
+			<bean class="org.bcos.channel.handler.ChannelConnections">
+				<property name="connectionsStr">
+					<list>
+						<value>7fbf7094ad555f698a377293f93317c65274412bdb9b2da11d319c205742b6ede57d24ee2f1816ceea458cf76bf91afcc75e68b11dc136036f16ab0c35fa8263@127.0.0.1:30337</value>
+					</list>
+				</property>
+			</bean>
+		</entry>
+		</map>
+	</property>
+</bean>
+
+</beans>
