@@ -12,7 +12,7 @@
 
 # 使用方式
 
-### 搭建eth：
+### 搭建fisco-bcos：
 
 至少部署配置链，热点链，用户链1，用户链2。每条链的节点个数任意，至少为1。
 
@@ -185,8 +185,9 @@
 
 ### 再使用工具部署路由合约:
 
+```
 java -cp conf/:apps/*:lib/* org.bcos.proxy.tool.DeployContract deploy nodes.json
-
+```
 
 nodes.json 格式:
 
