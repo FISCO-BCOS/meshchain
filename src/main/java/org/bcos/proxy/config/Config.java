@@ -67,23 +67,21 @@ public @Data class Config {
         Node privateNode = privateNodeList.item(0);
         String privateKey = privateNode.getTextContent();
 
+        String serviceId = "";
+
         NodeList serviceIdNodeList = configElement.getElementsByTagName("serviceId");
-        if (serviceIdNodeList == null ||serviceIdNodeList.getLength() == 0){
-            throw new ParserConfigurationException("serviceId is not defined");
+        if (serviceIdNodeList != null && serviceIdNodeList.getLength() != 0){
+            Node serviceIdNode = serviceIdNodeList.item(0);
+            serviceId = serviceIdNode.getTextContent();
         }
 
-        Node serviceIdNode = serviceIdNodeList.item(0);
-        String serviceId = serviceIdNode.getTextContent();
-
+        String scenario = "";
 
         NodeList scenarioNodeList = configElement.getElementsByTagName("scenario");
-        if (scenarioNodeList == null ||scenarioNodeList.getLength() == 0){
-            throw new ParserConfigurationException("scenario is not defined");
+        if (scenarioNodeList != null && scenarioNodeList.getLength() != 0){
+            Node scenarioNode = scenarioNodeList.item(0);
+            scenario = scenarioNode.getTextContent();
         }
-
-        Node scenarioNode = scenarioNodeList.item(0);
-        String scenario = scenarioNode.getTextContent();
-
 
         NodeList routeAddressNodeList = configElement.getElementsByTagName("routeAddress");
         if (routeAddressNodeList == null ||routeAddressNodeList.getLength() == 0){
