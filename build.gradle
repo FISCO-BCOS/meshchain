@@ -12,8 +12,6 @@ targetCompatibility = 1.8
 repositories {
 
     maven {
-    	url "http://maven.weoa.com/nexus/content/groups/public/"
-        //url "http://maven.webank.io/nexus/content/groups/public/"
         //url "http://maven.aliyun.com/nexus/content/groups/public/"
     }
     mavenLocal()
