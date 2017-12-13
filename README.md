@@ -16,20 +16,26 @@
 
 至少部署配置链，热点链，用户链1，用户链2。每条链的节点个数任意，至少为1。
 
-搭建步骤：请参照白皮书
+搭建步骤：请参照[安装说明](https://github.com/FISCO-BCOS/FISCO-BCOS)
 
 部署系统合约：
 
+```
 1. cd systemcontractv2
 2. babel-node deploy.js
 3. 得到系统代理合约地址后，替换到阶段的config.json的systemproxyaddress
+```
+
 
 重启每条链的所有节点，然后选择每一条链中的某个节点部署Meshchain.sol合约：
 
+```
 1. cd tool
 2. vim config.json,修改为节点的rpc端口
 2. babel-node deploy.js Meshchain
 3. babel-node abi_name_service_tool.js add Meshchain
+```
+
 
 
 ### 成功部署多条链后，开始一下步骤：
@@ -162,8 +168,8 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <config>
     <privateKey>bcec428d5205abe0f0cc8a734083908d9eb8563e31f943d760786edf42ad67dd</privateKey> <!--用作发送交易做签名的私钥-->
-    <serviceId></serviceId> <!-- 微众RMB的ID,HTTP方式可忽略-->
-    <scenario></scenario> <!-- 微众RMB的scenario,Http方式忽略 -->
+    <serviceId></serviceId> <!-- HTTP方式可忽略-->
+    <scenario></scenario> <!-- Http方式忽略-->
     <routeAddress>0x44f9b7d2629581d706dfa5f7e12799c0edfda73d</routeAddress> <!-- 路由合约，这个需要执行下面部署路由合约的时候会返回的地址-->
     <setNameList>set1Chain,set2Chain</setNameList> <!--用户链的列表-->
     <hotChainName>hotChain</hotChainName> <!--热点链的名字-->
@@ -174,13 +180,17 @@
 
 ```
 
-1. serviceId：rmb id
-2. routeAddress：路由链的地址，下面会说明如何获取
-3. setNameList：对应的所有的子链名字，参照applicationContext.xml里面的所有子链配置的id
-4. hotChainName: 对应热点链的名字，参照applicationContext.xml里面的热点链配置的id
-5. routeChainName：对应路由链的名字，参照applicationContext.xml里面的路由链配置的id
-6. enableTimeTask：是否开启relay task，0：不开启 1：开启
-7. timeTaskIntervalSecond：定期任务间隔
+```
+1. serviceId：http 方式可忽略
+2. scenario: http 方式可忽略
+3. routeAddress：路由链的地址，下面会说明如何获取
+4. setNameList：对应的所有的子链名字，参照applicationContext.xml里面的所有子链配置的id
+5. hotChainName: 对应热点链的名字，参照applicationContext.xml里面的热点链配置的id
+6. routeChainName：对应路由链的名字，参照applicationContext.xml里面的路由链配置的id
+7. enableTimeTask：是否开启relay task，0：不开启 1：开启
+8. timeTaskIntervalSecond：定期任务间隔
+```
+
 
 
 ### 再使用工具部署路由合约:
