@@ -3,6 +3,7 @@
 
 ```
 1. git clone https://github.com/FISCO-BCOS/FISCO-BCOS.git
+2. 
 2. cd FISCO-BCOS/sample
 3. sh init_meshchain.sh <链的数目> <每条链的节点数目> <ip0> <ip1>...
 ```
@@ -25,10 +26,13 @@
 ```
 1. git clone https://github.com/FISCO-BCOS/meshchain.git
 2. cd meshchain
-3. 拷贝步骤二生成的proxyConfig.tar.gz到当前目录
-4. tar -zxvf proxyConfig.tar.gz
-5. cp proxyConfig/* conf/
-6. sh start.sh 默认监听8081端口。由于初始化需要一段时间，请耐心等待，用命令netstat -npl | grep 8081 来查看进程是否已经监听
-7. sh demo.sh 功能包括了对热点账户的注册，用户的充值和消费接口，期间需要输入要注册的热点账户Id,请参考提示操作。
-8. sh queryAssets.sh 表示每隔一秒去查询热点账户在多条链之间的资产变化，期间需要输入要查询的热点账户Id
+3. gradle build
+4. cd dist
+5. 拷贝步骤二生成的proxyConfig.tar.gz到当前目录
+6. tar -zxvf proxyConfig.tar.gz
+7. cp proxyConfig/* conf/
+8. 按需修改conf/log4j2.xml的日志配置
+9. sh start.sh 默认监听8081端口。由于初始化需要一段时间，请耐心等待若干秒，然后用命令netstat -npl | grep 8081 来查看进程是否已经监听
+10. sh demo.sh 功能包括了对热点账户的注册，用户的充值和消费接口，期间需要输入要注册的热点账户Id,请参考提示操作
+11. sh queryAssets.sh 表示每隔一秒去查询热点账户在多条链之间的资产变化，期间需要输入要查询的热点账户Id
 ```
