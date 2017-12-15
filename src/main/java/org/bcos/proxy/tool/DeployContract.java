@@ -269,8 +269,18 @@ public class DeployContract {
         int assets = array.getInteger(0);
         int frozenAssets = array.getInteger(1);
 
-        System.out.println("queryMerchantAssets get assets:" + assets);
-        System.out.println("queryMerchantAssets get frozenAsset:" + frozenAssets);
+        System.out.printf("chainName:%s, queryMerchantAssets get availAssets:%d, frozenAsset:%d\n", chainName, assets, frozenAssets);
+    }
+
+    public static void demoForQueryMerchantAssets(String jsonStr) throws Exception {
+        while (true) {
+            for(String chainName : nameSetServiceMap.keySet()) {
+                queryMerchantAssets(chainName, jsonStr);
+            }
+
+            queryMerchantAssets("hotService", jsonStr);
+            Thread.sleep(1000);
+        }
     }
 
     /**
@@ -458,6 +468,7 @@ public class DeployContract {
             System.out.println("      [registerMerchant $merchantId, $merchantName");
             System.out.println("      [queryMerchantAssets $chainName, $requestStr");
             System.out.println("      [querySetUsers $setIdx(0代表set1, 1代表set2,类推)]");
+            System.out.println("      [demo $requestStr]");
             System.exit(0);
         }
 
@@ -476,6 +487,8 @@ public class DeployContract {
            queryPub(args[1]);
         } else if ("querySetUsers".equals(args[0])){
             querySetUsers(Integer.parseInt(args[1]));
+        } else if ("demo".equals(args[0])){
+            demoForQueryMerchantAssets(args[1]);
         } else {
             System.out.println("not support method");
         }
