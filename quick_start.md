@@ -3,9 +3,9 @@
 
 ```
 1. git clone https://github.com/FISCO-BCOS/FISCO-BCOS.git
-2. 
-2. cd FISCO-BCOS/sample
-3. sh init_meshchain.sh <链的数目> <每条链的节点数目> <ip0> <ip1>...
+2. sh build.sh
+3. cd FISCO-BCOS/sample
+4. sh init_meshchain.sh <链的数目> <每条链的节点数目> <ip0> <ip1>...
 ```
 
 其中，链数目>=4 节点数目>=1 后面的ip是表示，ip0部署链0， ip1部署链1等等。默认情况下，链0部署路由链，链1部署热点链。其他则部署用户链，也称为set链
