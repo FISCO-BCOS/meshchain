@@ -70,7 +70,7 @@ netstat -npl | grep 8081
 sh demo.sh
 ```
 
-##多机部署多链
+## 多机部署多链
 
 步骤一：
 
