@@ -1,5 +1,12 @@
 package org.bcos.proxy.tool;
 
+import org.apache.http.HttpResponse;
+import org.apache.http.HttpStatus;
+import org.apache.http.client.HttpClient;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.entity.StringEntity;
+import org.apache.http.impl.client.HttpClientBuilder;
+import org.apache.http.util.EntityUtils;
 import org.bcos.channel.client.Service;
 import org.bcos.channel.client.TransactionSucCallback;
 import org.bcos.channel.dto.EthereumResponse;
@@ -9,7 +16,11 @@ import org.bcos.proxy.contract.RouteManager;
 import org.bcos.proxy.contract.Set;
 import org.bcos.proxy.contract.Meshchain;
 import org.bcos.proxy.server.RMBServer;
-import org.bcos.web3j.abi.datatypes.*;
+import org.bcos.web3j.abi.datatypes.Address;
+import org.bcos.web3j.abi.datatypes.Bool;
+import org.bcos.web3j.abi.datatypes.DynamicArray;
+import org.bcos.web3j.abi.datatypes.Type;
+import org.bcos.web3j.abi.datatypes.Utf8String;
 import org.bcos.web3j.abi.datatypes.generated.Bytes32;
 import org.bcos.web3j.abi.datatypes.generated.Uint256;
 import org.bcos.web3j.crypto.Credentials;
@@ -34,11 +45,15 @@ import org.springframework.context.support.ClassPathXmlApplicationContext;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.math.BigInteger;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
@@ -237,10 +252,10 @@ public class DeployContract {
     }
 
     /**
-     * @desc 主意是要查询商户id的资产
-     * @param jsonStr {"contract":"Meshchain","func":"getMerchantAssets","version":"","params":[]}
+     * @desc 主意是要查资产
+     * @param jsonStr {"contract":"Meshchain","func":"getMerchantAssets","version":"","params":[]} //查询商户的 {"contract":"Meshchain","func":"getUserAssets","version":"","params":[]} //查询用户的
      */
-    public static void queryMerchantAssets(String chainName, String jsonStr) throws Exception {
+    public static List<Integer> queryAssets(String chainName, String jsonStr) throws Exception {
         //String str = "{\"contract\":\"transactionTest\",\"func\":\"add\",\"version\":\"\",\"params\":[1]}";
 
         Web3j web3j = null;
@@ -262,27 +277,160 @@ public class DeployContract {
         EthCall ethCall = web3j.ethCall(Transaction.createEthCallTransaction(null, null, data), DefaultBlockParameterName.LATEST).sendAsync().get();
         String value = ethCall.getResult();
         JSONArray array = JSON.parseArray(value);
-        if (array.size() != 2) {
-            throw new Exception("array size != 2");
+        if (array.size() == 0) {
+            throw new Exception("array size = 0");
         }
 
         int assets = array.getInteger(0);
-        int frozenAssets = array.getInteger(1);
 
-        System.out.printf("chainName:%s, queryMerchantAssets get availAssets:%d, frozenAsset:%d\n", chainName, assets, frozenAssets);
+        List<Integer> ret = new ArrayList<>();
+        ret.add(assets);
+        return ret;
+
     }
 
-    public static void demoForQueryMerchantAssets(String jsonStr) throws Exception {
+    public static void demoForQueryMerchantAssets(String merchantId) throws Exception {
+
+        boolean existed = checkMerchantExisted(merchantId);
+        if (!existed) {
+            registerMerchant(merchantId, merchantId);
+            Thread.sleep(2000);
+        }
+
+        String queryMerchantStr = String.format("{\"contract\":\"Meshchain\",\"func\":\"getMerchantAssets\",\"version\":\"\",\"params\":[\"%s\"]}", merchantId);
+        String queryUserStr = "{\"contract\":\"Meshchain\",\"func\":\"getUserAssets\",\"version\":\"\",\"params\":[\"user_%d\"]}";
+
+        Thread thread = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                while (true) {
+                    try {
+                        System.out.println("开始用户充值操作...");
+                        for(int i = 0; i < 4; i++) {
+                            String deposit = String.format("{\"method\":\"userDeposit\",\"uid\":\"user_%d\",\"version\":\"\",\"contractName\":\"Meshchain\",\"params\":[\"1000\"]}", i);
+                            String res = doPost("http://127.0.0.1:8081", deposit);
+                            JSONObject jsonObject = JSON.parseObject(res);
+                            if (jsonObject.getString("code").equals("0")) {
+                                System.out.printf("用户:user_%s 充值成功,金额:1000...\n", i);
+                            } else {
+                                System.out.printf("用户:user_%s 充值失败...result:%s\n", i, res);
+                                System.exit(0);
+                            }
+
+                        }
+
+                        System.out.println("开始用户给热点账户子账户转账操作...");
+
+                        for(int i = 0; i < 4; i++) {
+                            String consume = String.format("{\"method\":\"consume\",\"uid\":\"user_%d\",\"version\":\"\",\"contractName\":\"Meshchain\",\"params\":[\"%s\",1000]}", i, merchantId);
+                            String res = doPost("http://127.0.0.1:8081", consume);
+                            JSONObject jsonObject = JSON.parseObject(res);
+                            if (jsonObject.getString("code").equals("0")) {
+                                System.out.printf("用户:user_%d 给热点账户子账户:%s 转账成功, 金额:1000...\n", i, merchantId);
+                            } else {
+                                System.out.printf("用户:user_%d 给热点账户子账户:%s 转账失败...result:%s\n", i, merchantId, res);
+                                System.exit(0);
+                            }
+
+                        }
+
+                        Thread.sleep(1000);
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+
+            }
+        });
+
+        thread.start();
         while (true) {
+
+            List<String> sortChainName = new ArrayList<>();
             for(String chainName : nameSetServiceMap.keySet()) {
-                queryMerchantAssets(chainName, jsonStr);
+                sortChainName.add(chainName);
             }
 
-            queryMerchantAssets("hotService", jsonStr);
-            Thread.sleep(1000);
+            Collections.sort(sortChainName, new Comparator<String>() {
+                @Override
+                public int compare(String o1, String o2) {
+                    return o1.compareTo(o2);
+                }
+            });
+
+
+            String format = "%-20s\t%-20s\t%-20s\t%-20s";
+            String format1 = "%-20s\t%-28s\t%-28s\t%-20s";
+            StringBuilder str = new StringBuilder(String.format(format, "链名字", "账户名字", "账户类别", "账户资产"));
+
+            int i = 0;
+            for(String set : sortChainName) {
+                for(int j = 0; j < 2; j++, i++) {
+                    String queryUserTmp = String.format(queryUserStr, i);
+                    List<Integer> ret = queryAssets(set, queryUserTmp);
+                    if (ret != null && ret.size() > 0) {
+                        str.append("\n" + String.format(format1, String.format("用户链_%s", set), String.format("user_%d", i), "普通用户", ret.get(0).toString()));
+                    }
+                }
+
+                List<Integer> hotRet = queryAssets(set, queryMerchantStr);
+                if (hotRet != null && hotRet.size() > 0) {
+                    str.append("\n" + String.format(format1, String.format("用户链_%s", set), merchantId, "热点子账户", hotRet.get(0).toString()));
+                }
+
+                System.out.println("\n");
+            }
+
+            List<Integer> hotRet = queryAssets("hotService", queryMerchantStr);
+            if (hotRet != null && hotRet.size() > 0) {
+                str.append("\n" + String.format(format1, "热点链", merchantId, "热点账户", hotRet.get(0).toString()));
+            }
+
+            System.out.println(str + "\n");
+            Thread.sleep(2000);
         }
+
+
     }
 
+
+    public static String doPost(String url, String jsonStr) throws Exception {
+        String result = null;
+        HttpClient httpClient = HttpClientBuilder.create().build();
+        HttpPost post = new HttpPost(url);
+        StringEntity postingString = new StringEntity(jsonStr);
+        post.setEntity(postingString);
+        post.setHeader("Content-type", "application/json");
+        HttpResponse response = httpClient.execute(post);
+        try {
+            if (response.getStatusLine().getStatusCode() != HttpStatus.SC_OK) {
+                throw new Exception("http code is not 200");
+            } else {
+                result = new String(EntityUtils.toString(response.getEntity()).getBytes("ISO_8859_1"),"UTF-8");
+            }
+        } catch (Exception e) {
+            throw new Exception("deal respose exception.",e);
+        }
+
+        return result;
+    }
+
+    public static boolean checkMerchantExisted(String merchantId) throws Exception {
+        Web3j web3j = web3jHot;
+
+        String str = String.format("{\"contract\":\"Meshchain\",\"func\":\"checkMerchantExisted\",\"version\":\"\",\"params\":[\"%s\"]}", merchantId);
+
+        String data = Numeric.toHexString(str.getBytes());
+
+        EthCall ethCall = web3j.ethCall(Transaction.createEthCallTransaction(null, null, data), DefaultBlockParameterName.LATEST).sendAsync().get();
+        String value = ethCall.getResult();
+        JSONArray array = JSON.parseArray(value);
+        if (array.size() == 0) {
+            throw new Exception("array size = 0");
+        }
+
+        return array.getBoolean(0);
+    }
     /**
      *
      * @param merchantId 商户id
@@ -318,9 +466,13 @@ public class DeployContract {
                     if (responses.size() > 0) {
                         //按照业务合约解析event log,如果成功，则通知释放冻结
                         Meshchain.RetLogEventResponse response = responses.get(0);
-                        System.out.println("registerMerchant in hot chain onResponse data:" + response.code.getValue());
+                        if (response.code.getValue().intValue() == 0) {
+                            System.out.println("registerMerchant in hot chain success");
+                        } else {
+                            System.out.println("registerMerchant in hot chain failed.code:" + response.code.getValue() + ",msg:" + org.bcos.proxy.util.Error.ERROR_MAP.get(response.code.getValue().toString()));
+                        }
                     } else {
-                        System.out.println("registerMerchant in hot chain onResponse failed");
+                        System.out.println("registerMerchant in hot chain onResponse error");
                     }
                 } catch (Exception e) {
                     e.printStackTrace();
@@ -359,7 +511,12 @@ public class DeployContract {
                         if (responses.size() > 0) {
                             //按照业务合约解析event log,如果成功，则通知释放冻结
                             Meshchain.RetLogEventResponse response = responses.get(0);
-                            System.out.println("registerMerchant in:" + key + " chain onResponse data:" + response.code.getValue());
+                            if (response.code.getValue().intValue() == 0) {
+                                System.out.printf("registerMerchant in %s success\n", key);
+                            } else {
+                                System.out.printf("registerMerchant in %s failed.code:%d, msg:%s\n", key, response.code.getValue(), org.bcos.proxy.util.Error.ERROR_MAP.get(response.code.getValue().toString()));
+                            }
+
                         } else {
                             System.out.println("registerMerchant in:" + key + " chain onResponse failed");
                         }
@@ -466,7 +623,7 @@ public class DeployContract {
             System.out.println("usage:[deploy nodes.json");
             System.out.println("      [queryMerchantId $chainName, $requestStr");
             System.out.println("      [registerMerchant $merchantId, $merchantName");
-            System.out.println("      [queryMerchantAssets $chainName, $requestStr");
+            System.out.println("      [queryAssets $chainName, $requestStr");
             System.out.println("      [querySetUsers $setIdx(0代表set1, 1代表set2,类推)]");
             System.out.println("      [demo $requestStr]");
             System.exit(0);
@@ -479,8 +636,9 @@ public class DeployContract {
             queryMerchantId(args[1], args[2]);
         } else if ("registerMerchant".equals(args[0])){
             registerMerchant(args[1], args[2]);
-        } else if("queryMerchantAssets".equals(args[0])) {
-            queryMerchantAssets(args[1], args[2]);
+        } else if("queryAssets".equals(args[0])) {
+            List<Integer> ret = queryAssets(args[1], args[2]);
+            System.out.printf("chainName:%s, queryAssets get availAssets:%d, frozenAsset:%d\n", args[1], ret.get(0), ret.get(1));
         } else if ("addPub".equals(args[0])){
             addPub(args[1]);
         } else if ("queryPub".equals(args[0])){
