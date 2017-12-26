@@ -249,7 +249,7 @@ java -cp conf/:apps/*:lib/* org.bcos.proxy.tool.DeployContract registerMerchant 
 2. 第一个参数是商户id,类型是bytes32，譬如"1"
 3. 第二个参数是商户名字,类型是bytes32，譬如“myMerchant”
 
-注册成功后，会有'registerMerchant ** onResponse data:0',必须为0才可以确保成功。其他则为失败
+注册成功后，会有'registerMerchant in ** success'才可以认为成功（** 代表不同的链名字）
 
 ### 启动server监听:
 
