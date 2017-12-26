@@ -405,7 +405,7 @@ public class DeployContract {
             if (response.getStatusLine().getStatusCode() != HttpStatus.SC_OK) {
                 throw new Exception("http code is not 200");
             } else {
-                result = new String(EntityUtils.toString(response.getEntity()).getBytes("ISO_8859_1"),"UTF-8");
+                result = new String(EntityUtils.toString(response.getEntity()));
             }
         } catch (Exception e) {
             throw new Exception("deal respose exception.",e);
