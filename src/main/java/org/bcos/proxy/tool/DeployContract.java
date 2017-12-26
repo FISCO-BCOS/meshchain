@@ -314,11 +314,11 @@ public class DeployContract {
                                 System.out.printf("用户:user_%s 充值成功,金额:1000...\n", i);
                             } else {
                                 System.out.printf("用户:user_%s 充值失败...result:%s\n", i, res);
-                                System.exit(0);
                             }
 
                         }
 
+                        Thread.sleep(1000);
                         System.out.println("开始用户给热点账户子账户转账操作...");
 
                         for(int i = 0; i < 4; i++) {
@@ -329,7 +329,6 @@ public class DeployContract {
                                 System.out.printf("用户:user_%d 给热点账户子账户:%s 转账成功, 金额:1000...\n", i, merchantId);
                             } else {
                                 System.out.printf("用户:user_%d 给热点账户子账户:%s 转账失败...result:%s\n", i, merchantId, res);
-                                System.exit(0);
                             }
 
                         }
