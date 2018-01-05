@@ -7,3 +7,8 @@ if [ ${pid}"" = "" ];then
 fi 
 
 kill ${pid}
+if [ $? = 0 ];then
+	echo "stop success"
+else
+	echo "stop failed"
+fi

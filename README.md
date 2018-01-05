@@ -33,9 +33,12 @@ cat config.json
 得到该RPC端口后，开始进行部署系统合约(假设当前目录是FISCO-BCOS)：
 
 ```
-1. cd systemcontractv2
-2. vim config.json，替换 var proxy="http://ip:port"为节点的ip和rpc端口，保存
-3. babel-node deploy.js
+cd systemcontractv2
+
+#替换 var proxy="http://ip:port"为节点的ip和rpc端口，保存
+vim config.json
+
+babel-node deploy.js
 ```
 
 得到系统代理合约地址后，如箭头所示
@@ -55,11 +58,20 @@ killall fisco-bcos
 重启后，然后部署Meshchain.sol合约（假设当前目录是FISCO-BCOS）：
 
 ```
-1. cd tool
-2. vim config.json，替换 var proxy="http://ip:port"为路由链中某个节点的ip和rpc端口，保存
-3. babel-node deploy.js Meshchain (注意没有.sol结尾)
-4. 首次添加Meshchain合约，执行babel-node abi_name_service_tool.js add Meshchain；否则执行babel-node abi_name_service_tool.js update Meshchain
-5. 检查是否添加成功，执行babel-node abi_name_service_tool.js list，如果输入的结果中，包含有Meshchain，则代表成功
+cd tool
+
+#替换 var proxy="http://ip:port"为路由链中某个节点的ip和rpc端口，保存
+vim config.json
+
+#注意Meshchain没有.sol结尾
+babel-node deploy.js Meshchain
+
+#首次添加Meshchain合约，执行babel-node abi_name_service_tool.js add Meshchain，否则执行babel-node abi_name_service_tool.js update Meshchain
+
+babel-node abi_name_service_tool.js add Meshchain
+
+#检查是否添加成功，如果输入的结果中，包含有Meshchain，则代表成功
+babel-node abi_name_service_tool.js list
 ```
 
 如下图：
@@ -72,28 +84,33 @@ killall fisco-bcos
 ### 成功部署多条链后，开始部署relay：
 
 ```
-	1. git clone https://github.com/FISCO-BCOS/meshchain.git
-	2. gradle build
-	3. cd dist/conf
-	4. vim applicationContext.xml
+git clone https://github.com/FISCO-BCOS/meshchain.git
+
+#gradle安装说明，请参照https://gradle.org/install/
+#java安装说明，请参照http://www.oracle.com/technetwork/java/javase/downloads/index.html
+#确保PATH里面已经追加gradle，譬如PATH=$GRADLE_HOME/bin:$PATH
+
+gradle build
+cd dist/conf
+
+#修改applicationContext.xml，bean id="routeService"的ip和端口，为路由链的所有节点的ip和channelPort。ip前面的nodeid可以任意填写，填写所有节点的ip和channelPort是为了保证容错，channelPort则为fisco-bcos节点启动时候指定的config.json里面的channelPort字段。如下图一和图二所示
+
+vim applicationContext.xml
 ```
-
-修改applicationContext.xml，bean id="routeService"的ip和端口，为路由链的所有节点的ip和channelPort（ip前面的nodeid可以随便填写，填写所有节点的ip和channelPort是为了容错）
-
-applicationContext.xml
 
 ![application.xml.route](https://github.com/FISCO-BCOS/meshchain/raw/master/images/application.xml.route.jpg)
 
-channelPort则为fisco-bcos节点启动时候指定的config.json里面的channelPort字段，如图
 
 ![config.json.channelPort](https://github.com/FISCO-BCOS/meshchain/raw/master/images/config.json.channelPort.png)
 
 
-同理，修改applicationContext.xml，bean id="hotService"的ip和端口，为热点链的所有节点的ip和channelPort。
-
-假设目前只有两条用户链set0，set1，那么追加以下内容到applicationContext.xml
-
 ```
+#同理，修改applicationContext.xml，bean id="hotService"的ip和端口，为热点链的所有节点的ip和channelPort
+
+vim applicationContext.xml
+
+#假设目前只有两条用户链set0，set1，那么追加以下内容到applicationContext.xml,ip和channelPort是用户链的节点ip和channelPort
+
 <bean id="set0Service" class="org.bcos.channel.client.Service">
 	<property name="orgID" value="WB" />
 	<property name="allChannelConnections">
@@ -113,9 +130,7 @@ channelPort则为fisco-bcos节点启动时候指定的config.json里面的channe
 		</map>
 	</property>
 </bean>
-```
 
-```
 <bean id="set1Service" class="org.bcos.channel.client.Service">
 	<property name="orgID" value="WB" />
 	<property name="allChannelConnections">
@@ -152,8 +167,10 @@ channelPort则为fisco-bcos节点启动时候指定的config.json里面的channe
 <span id = "config.xml"></span>
 
 ```
-1. cd meshchain/conf
-2. vim config.xml
+cd meshchain/dist/conf
+
+#config.xml的内容如下
+vim config.xml
 ```
 
 ```
@@ -181,8 +198,8 @@ channelPort则为fisco-bcos节点启动时候指定的config.json里面的channe
 <span id = "deploy_route">执行命令：</span>
 
 ```
-1. cd meshchain
-2. java -cp conf/:apps/*:lib/* org.bcos.proxy.tool.DeployContract deploy conf/route.json
+cd meshchain/dist
+java -cp conf/:apps/*:lib/* org.bcos.proxy.tool.DeployContract deploy conf/route.json
 ```
 
 <span id="route.json"></span>
@@ -223,8 +240,8 @@ route.json 格式:
 ### 使用工具注册热点商户和虚拟商户
 
 ```
-1. cd meshchain
-2. java -cp conf/:apps/*:lib/* org.bcos.proxy.tool.DeployContract registerMerchant merchantId merchantName
+cd meshchain/dist
+java -cp conf/:apps/*:lib/* org.bcos.proxy.tool.DeployContract registerMerchant merchantId merchantName
 
 ```
 
@@ -232,15 +249,15 @@ route.json 格式:
 2. 第一个参数是商户id,类型是bytes32，譬如"1"
 3. 第二个参数是商户名字,类型是bytes32，譬如“myMerchant”
 
-注册成功后，会有'registerMerchant ** onResponse data:0',必须为0才可以确保成功。其他则为失败
+注册成功后，会有'registerMerchant in ** success'才可以认为成功（** 代表不同的链名字）
 
 ### 启动server监听:
 
 http server:
 
 ```
-1. cd meshchain
-2. nohup java -cp conf/:apps/*:lib/* -Dserver=http -Dport=8081  org.bcos.proxy.main.Start &
+cd meshchain/dist
+nohup java -cp conf/:apps/*:lib/* -Dserver=http -Dport=8081  org.bcos.proxy.main.Start &
 ```
 
 监听的是http server,就可以curl发送post http请求，如上述的充值和消费接口
@@ -326,8 +343,8 @@ code的说明:
 若用户消费了接口，则可以通过命令来查询
 
 ```
-1. cd meshchain
-2. java -cp conf/:apps/*:lib/* org.bcos.proxy.tool.DeployContract queryMerchantAssets  chainName '{"contract":"Meshchain","func":"getMerchantAssets","version":"","params":["merchantId"]}'
+cd meshchain/dist
+java -cp conf/:apps/*:lib/* org.bcos.proxy.tool.DeployContract queryMerchantAssets  chainName '{"contract":"Meshchain","func":"getMerchantAssets","version":"","params":["merchantId"]}'
 ```
 
 1. chainName哪一条链,如上述的set0Service，set1Service
@@ -343,6 +360,7 @@ code的说明:
 ### 更多工具使用说明
 
 ```
+cd meshchain/dist
 java -cp conf/:apps/*:lib/* org.bcos.proxy.tool.DeployContract
 ```
 

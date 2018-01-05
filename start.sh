@@ -41,6 +41,7 @@ if [ ${existed}"" = "0" ];then
         exit
     fi
     setsid java -cp conf/:apps/*:lib/* -Dserver=http -Dport=8081 org.bcos.proxy.main.Start >> /dev/null 2>&1 &
+    echo "start success"
 else
     echo "java process is running..."
 fi
