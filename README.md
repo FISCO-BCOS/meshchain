@@ -262,6 +262,8 @@ nohup java -cp conf/:apps/*:lib/* -Dserver=http -Dport=8081  org.bcos.proxy.main
 
 监听的是http server,就可以curl发送post http请求，如上述的充值和消费接口
 
+注意：conf目录下的ca.crt需要跟每条链下的所有节点的ca.crt文件保持一致。节点的ca.crt文件位置在config.json的datadir指定的目录下
+
 充值协议:
 
 ```
@@ -290,7 +292,7 @@ curl http://ip:port -d '{"method":"consume","uid":"1","version":"","contractName
 参数说明：
 
 1. method：Meshchain合约中的某个方法，这里代表用户uid="1"给商家merchantId="1"消费
-2. uid：用作路由id，区分哪条用户链的用户
+2. uid：用作路由id，区分哪个用户
 3. version：合约版本
 4. contractName：合约名字
 5. params:数组，这里第一个参数表示merchantId，类型bytes32；第二个参数是金额，类型是uint256
@@ -344,17 +346,17 @@ code的说明:
 
 ```
 cd meshchain/dist
-java -cp conf/:apps/*:lib/* org.bcos.proxy.tool.DeployContract queryMerchantAssets  chainName '{"contract":"Meshchain","func":"getMerchantAssets","version":"","params":["merchantId"]}'
+java -cp conf/:apps/*:lib/* org.bcos.proxy.tool.DeployContract queryAssets  chainName '{"contract":"Meshchain","func":"getMerchantAssets","version":"","params":["merchantId"]}'
 ```
 
-1. chainName哪一条链,如上述的set0Service，set1Service
+1. chainName哪一条链,如上述的set0Service,set1Service,hotService
 2. merchantId商户ID，譬如"1"
 
 ### 查询跨链的转账是否成功
 1. 首先得确保relay task已经开启
 2. 其次子链上面的商户需要有资产，否则会有特别的返回码，返回码请参考Meshchain合约的错误码
 3. proxy.log,参考log4j2.xml的配置，查询关键字grep 'RelayTask start',代表子链往热点链开始转账
-4. 查询总资产是否平衡，即满足转账前链A的资产,链B的资产...等于转账后的子链A',B'...和热点链H的总和。A + B + ... = A' + B' +... + H (可以通过工具查询queryMerchantAssets)
+4. 查询总资产是否平衡，即满足转账前链A的资产,链B的资产...等于转账后的子链A',B'...和热点链H的总和。A + B + ... = A' + B' +... + H (可以通过工具查询queryAssets)
 
 
 ### 更多工具使用说明
@@ -372,12 +374,12 @@ java -cp conf/:apps/*:lib/* org.bcos.proxy.tool.DeployContract
 usage:[deploy nodes.json
       [queryMerchantId $chainName, $requestStr
       [registerMerchant $merchantId, $merchantName
-      [queryMerchantAssets $chainName, $requestStr
+      [queryAssets $chainName, $requestStr
       [querySetUsers $setIdx(0代表set1, 1代表set2,类推)]
 ```
 
 1. queryMerchantId 查询所有已存在的商户id，参数chainName为[route.json](#route.json)里面的set_name，requestStr为 '{"contract":"Meshchain","func":"getAllMerchantIds","version":"","params":[]}'
-2. queryMerchantAssets 查询商户资产，参数chainName为nodes.json里面的set_name，requestStr为'{"contract":"Meshchain","func":"getMerchantAssets","version":"","params":["$merchantId"]}'
+2. queryAssets 查询商户资产，参数chainName为nodes.json里面的set_name，requestStr为'{"contract":"Meshchain","func":"getMerchantAssets","version":"","params":["$merchantId"]}'
 3. deploy 发布路由合约，[route.json](#route.json)见上述
 4. querySetUsers 查询某个set的所有用户id，setIdx是一个set数组下标，0代表set0, 1代表set1等等
 
