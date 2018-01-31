@@ -12,6 +12,17 @@ http://www.springframework.org/schema/aop
 http://www.springframework.org/schema/aop/spring-aop-2.5.xsd">
 <bean id="routeService" class="org.bcos.channel.client.Service">
 	<property name="orgID" value="WB" />
+	<property name="threadPool">
+                <bean class="org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor">
+                        <property name="corePoolSize" value="50" />
+                        <property name="maxPoolSize" value="100" />
+                        <property name="queueCapacity" value="500" />
+                        <property name="keepAliveSeconds" value="60" />
+                        <property name="rejectedExecutionHandler">
+                                <bean class="java.util.concurrent.ThreadPoolExecutor.AbortPolicy" />
+                        </property>
+                </bean>
+    </property>
 	<property name="allChannelConnections">
 		<map>
 		<entry key="WB">
@@ -30,6 +41,17 @@ http://www.springframework.org/schema/aop/spring-aop-2.5.xsd">
 
 <bean id="hotService" class="org.bcos.channel.client.Service">
 	<property name="orgID" value="WB" />
+	<property name="threadPool">
+                <bean class="org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor">
+                        <property name="corePoolSize" value="50" />
+                        <property name="maxPoolSize" value="100" />
+                        <property name="queueCapacity" value="500" />
+                        <property name="keepAliveSeconds" value="60" />
+                        <property name="rejectedExecutionHandler">
+                                <bean class="java.util.concurrent.ThreadPoolExecutor.AbortPolicy" />
+                        </property>
+                </bean>
+    </property>
 	<property name="allChannelConnections">
 		<map>
 		<entry key="WB">
@@ -48,6 +70,17 @@ http://www.springframework.org/schema/aop/spring-aop-2.5.xsd">
 
 <bean id="set0Service" class="org.bcos.channel.client.Service">
 	<property name="orgID" value="WB" />
+	<property name="threadPool">
+                <bean class="org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor">
+                        <property name="corePoolSize" value="50" />
+                        <property name="maxPoolSize" value="100" />
+                        <property name="queueCapacity" value="500" />
+                        <property name="keepAliveSeconds" value="60" />
+                        <property name="rejectedExecutionHandler">
+                                <bean class="java.util.concurrent.ThreadPoolExecutor.AbortPolicy" />
+                        </property>
+                </bean>
+    </property>
 	<property name="allChannelConnections">
 		<map>
 		<entry key="WB">
@@ -66,6 +99,17 @@ http://www.springframework.org/schema/aop/spring-aop-2.5.xsd">
 
 <bean id="set1Service" class="org.bcos.channel.client.Service">
 	<property name="orgID" value="WB" />
+	<property name="threadPool">
+                <bean class="org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor">
+                        <property name="corePoolSize" value="50" />
+                        <property name="maxPoolSize" value="100" />
+                        <property name="queueCapacity" value="500" />
+                        <property name="keepAliveSeconds" value="60" />
+                        <property name="rejectedExecutionHandler">
+                                <bean class="java.util.concurrent.ThreadPoolExecutor.AbortPolicy" />
+                        </property>
+                </bean>
+    </property>
 	<property name="allChannelConnections">
 		<map>
 		<entry key="WB">
