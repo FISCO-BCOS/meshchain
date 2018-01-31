@@ -637,7 +637,7 @@ public class DeployContract {
             registerMerchant(args[1], args[2]);
         } else if("queryAssets".equals(args[0])) {
             List<Integer> ret = queryAssets(args[1], args[2]);
-            System.out.printf("chainName:%s, queryAssets get availAssets:%d, frozenAsset:%d\n", args[1], ret.get(0), ret.get(1));
+            System.out.printf("chainName:%s, queryAssets get availAssets:%d\n", args[1], ret.get(0);
         } else if ("addPub".equals(args[0])){
             addPub(args[1]);
         } else if ("queryPub".equals(args[0])){
