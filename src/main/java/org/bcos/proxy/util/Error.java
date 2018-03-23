@@ -45,7 +45,8 @@ public enum Error {
     CONTRACT_SUB_MERCHANT_EXIST_ERROR("10015", "影子户已存在"),
     CONTRACT_PUBKEY_NOT_EXIST_ERROR("10016", "公钥不存在"),
     CONTRACT_VERIFY_SIGN_ERROR("10017", "验证签名失败"),
-    CONTRACT_ASSETS_ERROR("10018", "金额非法")
+    CONTRACT_ASSETS_ERROR("10018", "金额非法"),
+    CONTRACT_TRANSACTION_NOT_EXIST_ERROR("10019", "交易不存在")
     ;
 
     public static Map<String, Error> ERROR_MAP;
@@ -77,16 +78,15 @@ public enum Error {
         ERROR_MAP.put("10016", CONTRACT_PUBKEY_NOT_EXIST_ERROR);
         ERROR_MAP.put("10017", CONTRACT_VERIFY_SIGN_ERROR);
         ERROR_MAP.put("10018", CONTRACT_ASSETS_ERROR);
+        ERROR_MAP.put("10019", CONTRACT_TRANSACTION_NOT_EXIST_ERROR);
     }
 
     private String code;
     private String description;
-    private String data;
 
     Error(String code, String description, String data) {
         this.code = code;
         this.description = description;
-        this.data = data;
     }
 
     Error(String code, String description) {
@@ -97,23 +97,8 @@ public enum Error {
         return code;
     }
 
-    public void setCode(String code) {
-        this.code = code;
-    }
-
     public String getDescription() {
         return description;
     }
 
-    public void setDescription(String description) {
-        this.description = description;
-    }
-
-    public String getData() {
-        return data;
-    }
-
-    public void setData(String data) {
-        this.data = data;
-    }
 }
