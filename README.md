@@ -150,6 +150,7 @@ vim config.xml
 在start.sh的脚本中，会有这么的一段命令来部署路由合约：
 
 ```
+#注意不用单独执行这行命令，sh start.sh过程中会部署
 java -cp conf/:apps/*:lib/* org.bcos.proxy.tool.DeployContract deploy conf/route.json
 ```
 
