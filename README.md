@@ -18,9 +18,11 @@
 
 ### 搭建fisco-bcos：
 
-至少部署配置链，热点链，用户链1，用户链2。每条链的节点个数任意，至少为1。
+至少部署路由链，分组链1，分组链2，分组链3。每条链的节点个数任意，至少为1。
 
-首先部署路由链。
+分了简化步骤，下面配置将会是：一条路由链，三条分组链。
+
+1. 首先部署路由链。
 
 fisco-bcos搭建步骤：请参照[安装说明](https://github.com/FISCO-BCOS/FISCO-BCOS)
 
@@ -52,7 +54,9 @@ babel-node deploy.js
 然后重启路由链的所有节点
 
 ```
-killall fisco-bcos
+#找出路由链节点的所有rpc port对应的进程号
+netstat -npl | grep -E "port1|port2|port3|..."
+killall ${proc1} ${proc2} ${proc3} ${proc4}
 ```
 
 重启后，然后部署Meshchain.sol合约（假设当前目录是FISCO-BCOS）：
@@ -79,9 +83,9 @@ babel-node abi_name_service_tool.js list
 ![meshchain_deploy](https://github.com/FISCO-BCOS/meshchain/raw/master/images/meshchain_deploy.png)
 
 
-以上，则代表路由链部署成功。热点链，用户链也执行以上的步骤。
+以上，则代表路由链部署成功。分组链1,分组链2,分组链3也执行以上的步骤。
 
-### 成功部署多条链后，开始部署relay：
+### 成功部署多条链后，开始部署proxy：
 
 ```
 git clone https://github.com/FISCO-BCOS/meshchain.git
@@ -105,51 +109,9 @@ vim applicationContext.xml
 
 
 ```
-#同理，修改applicationContext.xml，bean id="hotService"的ip和端口，为热点链的所有节点的ip和channelPort
+#同理，修改applicationContext.xml，bean id="set0Service"的ip和端口，为分组链0的所有节点的ip和channelPort。bean id="set1Service"的ip和端口，为分组链1的所有节点的ip和channelPort。bean id="set2Service"的ip和端口，为分组链2的所有节点的ip和channelPort
 
 vim applicationContext.xml
-
-#假设目前只有两条用户链set0，set1，那么追加以下内容到applicationContext.xml,ip和channelPort是用户链的节点ip和channelPort
-
-<bean id="set0Service" class="org.bcos.channel.client.Service">
-	<property name="orgID" value="WB" />
-	<property name="allChannelConnections">
-		<map>
-		<entry key="WB">
-			<bean class="org.bcos.channel.handler.ChannelConnections">
-				<property name="connectionsStr">
-					<list>
-						<value>node1@ip:channelPort</value>
-						<value>node2@ip:channelPort</value>
-						<value>node3@ip:channelPort</value>
-						<value>node4@ip:channelPort</value>
-					</list>
-				</property>
-			</bean>
-		</entry>
-		</map>
-	</property>
-</bean>
-
-<bean id="set1Service" class="org.bcos.channel.client.Service">
-	<property name="orgID" value="WB" />
-	<property name="allChannelConnections">
-		<map>
-		<entry key="WB">
-			<bean class="org.bcos.channel.handler.ChannelConnections">
-				<property name="connectionsStr">
-					<list>
-						<value>node1@ip:channelPort</value>
-						<value>node2@ip:channelPort</value>
-						<value>node3@ip:channelPort</value>
-						<value>node4@ip:channelPort</value>
-					</list>
-				</property>
-			</bean>
-		</entry>
-		</map>
-	</property>
-</bean>
 ```
 
 结果如下：
@@ -157,13 +119,7 @@ vim applicationContext.xml
 ![application.xml.set](https://github.com/FISCO-BCOS/meshchain/raw/master/images/application.xml.set.png)
 
 
-<span id = "setNameList"></span>
-同时修改conf/config.xml里面的setNameList为如下图：
-
-![application.xml.setnamelist](https://github.com/FISCO-BCOS/meshchain/raw/master/images/application.xml.setnamelist.png)
-
-
-### 然后更改配置文件config.xml
+### 更改配置文件config.xml
 <span id = "config.xml"></span>
 
 ```
@@ -177,28 +133,23 @@ vim config.xml
 <?xml version="1.0" encoding="UTF-8" ?>
 <config>
     <privateKey>bcec428d5205abe0f0cc8a734083908d9eb8563e31f943d760786edf42ad67dd</privateKey> <!--用作发送交易做签名的私钥-->
-    <serviceId></serviceId> <!-- HTTP方式可忽略-->
-    <scenario></scenario> <!-- Http方式忽略-->
-    <routeAddress>${routeAddress}</routeAddress> <!-- 路由合约，这个需要执行下面部署路由合约的时候会返回的地址-->
-    <setNameList>set0Chain,set1Chain</setNameList> <!--用户链的列表,名字可以随意，但需要不重复-->
-    <hotChainName>hotService</hotChainName> <!--热点链的名字-->
-    <routeChainName>routeService</routeChainName> <!--路由链链的名字-->
-    <enableTimeTask>1</enableTimeTask> <!--是否开启定时任务 0：不开启 1：开启-->
+    <routeAddress>${routeAddress}</routeAddress> <!-- 路由合约，这个在启动proxy执行start.sh脚本时候会部署路由合约并替换这个变量-->
+    <hotChainName>set2Service</hotChainName> <!--热点链的名字-->
+    <hotAccounts>routeService</hotAccounts> <!--热点账户的名字-->
+    <enableTimeTask>0</enableTimeTask> <!--是否开启定时任务 0：不开启 1：开启-->
     <timeTaskIntervalSecond>60</timeTaskIntervalSecond> <!--定时任务间隔，秒为单位-->
 </config>
 
 ```
 
-需要注意的是routeAddress是需要[部署路由合约](#deploy_route)来得到，请部署后，替换config.xml的${routeAddress}
 
-
-
-### 使用工具部署路由合约:
+### 部署路由合约:
 
 <span id = "deploy_route">执行命令：</span>
 
+在start.sh的脚本中，会有这么的一段命令来部署路由合约：
+
 ```
-cd meshchain/dist
 java -cp conf/:apps/*:lib/* org.bcos.proxy.tool.DeployContract deploy conf/route.json
 ```
 
@@ -209,14 +160,20 @@ route.json 格式:
 [
     {
         "set_name":"set0Service",
-        "set_warn_num":8,
-        "set_max_num":10,
+        "set_warn_num":4,
+        "set_max_num":5,
         "set_node_list":[]
     },
     {
         "set_name":"set1Service",
-        "set_warn_num":8,
-        "set_max_num":10,
+        "set_warn_num":4,
+        "set_max_num":5,
+        "set_node_list":[]
+    },
+    {
+        "set_name":"set2Service",
+        "set_warn_num":4,
+        "set_max_num":5,
         "set_node_list":[]
     }
 ]
@@ -224,95 +181,100 @@ route.json 格式:
 
 说明：
 
-1. set_name是指用户链的名字，如果有多个set_name，不能重复，且必须要与config.xml的<setNameList></setNameList>保持一致。请参考[例子](#setNameList)
+1. set_name是指用户链的名字，如果有多个set_name，不能重复，且必须要与applicationContext的bean id="xxxService"保持一致。
 
 2. set_warn_num：是指某个set达到set_warn_num则会有相关的日志告警，日志设置请参考conf/log4j2.xml
 
 3. set_max_num：是指某个set最多能容纳set_max_num个用户
 
-4. 路由合约的默认分配规则，一个set的[uid](#uid)个数最大为set_max_num.增加用户则会在set1...诸如类推。
+4. 路由合约的默认分配规则，一个set的[uid](#uid)个数最大为set_max_num.set0满了后，再增加用户则会在set1添加，理论上无容量限制。
 
-5. 部署期间会有相关的日志'deployContract'输出到终端,来确认是否部署成功。
-
-如果看到'register route contract success.address:'，后面跟着就是路由合约的地址，请填写到conf/config.xml的${routeAddress}
-
-
-### 使用工具注册热点商户和虚拟商户
-
-```
-cd meshchain/dist
-java -cp conf/:apps/*:lib/* org.bcos.proxy.tool.DeployContract registerMerchant merchantId merchantName
-
-```
-
-1. registerMerchant是接口名字
-2. 第一个参数是商户id,类型是bytes32，譬如"1"
-3. 第二个参数是商户名字,类型是bytes32，譬如“myMerchant”
-
-注册成功后，会有'registerMerchant in ** success'才可以认为成功（** 代表不同的链名字）
 
 ### 启动server监听:
 
-http server:
+启动http server:
 
 ```
-cd meshchain/dist
-nohup java -cp conf/:apps/*:lib/* -Dserver=http -Dport=8081  org.bcos.proxy.main.Start &
+sh start.sh
 ```
 
-监听的是http server,就可以curl发送post http请求，如上述的充值和消费接口
+监听的是http server,就可以curl发送post http请求，如用户注册，用户充值和用户转账.
 
 注意：conf目录下的ca.crt需要跟每条链下的所有节点的ca.crt文件保持一致。节点的ca.crt文件位置在config.json的datadir指定的目录下
 
-充值协议:
+注册协议:
 
 ```
-curl http://127.0.0.1:8081 -d '{"method":"userDeposit","uid":"1","version":"","contractName":"Meshchain","params":["1000"]}'
-```
-
-参数说明：
-
-1. method：Meshchain合约中的某个方法，这里代表用户充值
-2. uid：用作路由id，区分哪条用户链的用户 <span id="uid"> </span>
-3. version：合约版本
-4. contractName：合约名字
-5. params:数组，这里第一个参数表示金额，类型uint256
-
-返回结果如下图:
-
-![user_deposit](https://github.com/FISCO-BCOS/meshchain/raw/master/images/user_deposit.png)
-
-
-消费协议:
-
-```
-curl http://ip:port -d '{"method":"consume","uid":"1","version":"","contractName":"Meshchain","params":["1",200]}'
+curl http://127.0.0.1:8081 -d '{"func":"register","uid":"1","version":"","contractName":"Meshchain","params":[100,0, "fisco-dev"]}'
 ```
 
 参数说明：
 
-1. method：Meshchain合约中的某个方法，这里代表用户uid="1"给商家merchantId="1"消费
-2. uid：用作路由id，区分哪个用户
+1. func：Meshchain合约中的某个方法，这里代表用户注册
+2. uid：用作路由id，区分哪条分组链的用户
 3. version：合约版本
 4. contractName：合约名字
-5. params:数组，这里第一个参数表示merchantId，类型bytes32；第二个参数是金额，类型是uint256
-
-
-返回结果如下图：
-
-![user_consume](https://github.com/FISCO-BCOS/meshchain/raw/master/images/user_consume.png)
-
-
+5. params:参数数组，这里第一个参数表示用户初始金额，类型uint256;第二个参数是身份类型 0:普通用户 1:热点账户;第三个参数是用户名字。
 
 response响应:
 
 ```
 {
 	"code":0,
-	"data":“”，
+	"data":“ok”，
 	“message”:""
 }
 ```
+
+充值协议:
+
+```
+curl http://ip:port -d '{"func":"deposit","uid":"1","version":"","contractName":"Meshchain","params":[200]}'
+```
+
+参数说明：
+
+1. func：Meshchain合约中的某个方法，这里代表用户充值
+2. uid：用作路由id，区分哪个用户
+3. version：合约版本
+4. contractName：合约名字
+5. params:数组，这里第一个参数是金额，类型是uint256
+
+response响应:
+
+```
+{
+	"code":0,
+	"data":“{\"deposit_id\":1}”，
+	“message”:""
+}
+```
+
+转账协议：
+
+```
+curl http://ip:port -d '{"func":"transfer","uid":"1","version":"","contractName":"Meshchain","params":["2", 10]}'
+```
+
+参数说明：
+
+1. func：Meshchain合约中的某个方法，这里代表用户"1"给用户"2"转账
+2. uid：用作路由id，区分哪个用户
+3. version：合约版本
+4. contractName：合约名字
+5. params:数组，这里第一个参数是另外一个用户id"2"，类型是bytes32;第二个参数是金额，类型是uint256
+
+response响应:
+
+```
+{
+	"code":0,
+	"data":“{\"from_transfer_id\":1, \"to_transfer_id\":1}”
+	“message”:""
+}
+```
+
+
 
 code的说明:
 
@@ -337,51 +299,59 @@ code的说明:
 10016:公钥列表不存在
 10017:验证签名失败
 10018:金额非法
+10019:交易不存在
+10020:热点账户已存在
 ```
 
-# 验证和关键日志
+# 验证
 
-### 商户的资产查询是否变化
-若用户消费了接口，则可以通过命令来查询
-
-```
-cd meshchain/dist
-java -cp conf/:apps/*:lib/* org.bcos.proxy.tool.DeployContract queryAssets  chainName '{"contract":"Meshchain","func":"getMerchantAssets","version":"","params":["merchantId"]}'
-```
-
-1. chainName哪一条链,如上述的set0Service,set1Service,hotService
-2. merchantId商户ID，譬如"1"
-
-### 查询跨链的转账是否成功
-1. 首先得确保relay task已经开启
-2. 其次子链上面的商户需要有资产，否则会有特别的返回码，返回码请参考Meshchain合约的错误码
-3. proxy.log,参考log4j2.xml的配置，查询关键字grep 'RelayTask start',代表子链往热点链开始转账
-4. 查询总资产是否平衡，即满足转账前链A的资产,链B的资产...等于转账后的子链A',B'...和热点链H的总和。A + B + ... = A' + B' +... + H (可以通过工具查询queryAssets)
-
-
-### 更多工具使用说明
+### 查询用户的资产
 
 ```
 cd meshchain/dist
-java -cp conf/:apps/*:lib/* org.bcos.proxy.tool.DeployContract
+java -cp conf/:apps/*:lib/* org.bcos.proxy.tool.DeployContract queryUserInfo ${uid} 
 ```
 
-注意:由于初始化的原因，需要等待若干秒
+uid是指用户唯一的uid，如上述的“1”
 
-然后会有相关的工具使用说明:
+response响应如下：
 
 ```
-usage:[deploy nodes.json
-      [queryMerchantId $chainName, $requestStr
-      [registerMerchant $merchantId, $merchantName
-      [queryAssets $chainName, $requestStr
-      [querySetUsers $setIdx(0代表set1, 1代表set2,类推)]
+uid:1, queryUserInfo get availAssets:290 unAvailAssets: 0, identity:1
 ```
 
-1. queryMerchantId 查询所有已存在的商户id，参数chainName为[route.json](#route.json)里面的set_name，requestStr为 '{"contract":"Meshchain","func":"getAllMerchantIds","version":"","params":[]}'
-2. queryAssets 查询商户资产，参数chainName为nodes.json里面的set_name，requestStr为'{"contract":"Meshchain","func":"getMerchantAssets","version":"","params":["$merchantId"]}'
-3. deploy 发布路由合约，[route.json](#route.json)见上述
-4. querySetUsers 查询某个set的所有用户id，setIdx是一个set数组下标，0代表set0, 1代表set1等等
+
+# 热点账户
+
+热点账户的相关说明请参考：[并行计算和热点账户的解决方案](https://github.com/FISCO-BCOS/whitepaper#333-%E5%B9%B6%E8%A1%8C%E8%AE%A1%E7%AE%97%E5%92%8C%E7%83%AD%E7%82%B9%E8%B4%A6%E6%88%B7%E8%A7%A3%E5%86%B3%E6%96%B9%E6%A1%88)
+
+在conf/config.xml中，假如我们指定了set2Service为热点链。那么分组链set0Service，ser1Service会有热点账户的影子户。举例，热点账户fisco-dev在热点链set2Service注册了，identity为1。那么在set0Service，ser1Service上面，必须要有用户名为fisco-dev，identity为0的‘影子户’。
+
+
+因此，倘若普通用户A给热点账户H转账，实现方式是A会找到热点账户在A用户所在分组链的同名影子户H'，然后给影子户H'转账，这时候不涉及到跨链的操作。之后，影子户与热点户的转账就是跨链的操作，该操作是由一个异步的线程去达到的。
+
+修改conf/config.xml
+
+```
+<enableTimeTask>1</enableTimeTask> <!--0:不开启 1:开启-->
+<hotAccounts>fisco-dev</hotAccounts> <!--确保该账户为热点账户,且在链上已注册,逗号分隔多个-->
+<hotChainName>set2Service</hotChainName>
+<timeTaskIntervalSecond>30</timeTaskIntervalSecond>
+```
+
+配置生效后，重启服务
+
+```
+sh stop.sh && sh start.sh
+```
+
+检查日志
+
+```
+grep 'RelayTask start' $log
+```
+
+$log是指conf/log4j2.xml里面指定的文件名字。当出现这样的日志关键字，可以配合工具-查询用户的资产来验证跨链操作是否生效。
 
 
 
