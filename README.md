@@ -135,7 +135,7 @@ vim config.xml
     <privateKey>bcec428d5205abe0f0cc8a734083908d9eb8563e31f943d760786edf42ad67dd</privateKey> <!--用作发送交易做签名的私钥-->
     <routeAddress>${routeAddress}</routeAddress> <!-- 路由合约，这个在启动proxy执行start.sh脚本时候会部署路由合约并替换这个变量-->
     <hotChainName>set2Service</hotChainName> <!--热点链的名字-->
-    <hotAccounts>routeService</hotAccounts> <!--热点账户的名字-->
+    <hotAccounts>fisco-dev</hotAccounts> <!--热点账户的名字-->
     <enableTimeTask>0</enableTimeTask> <!--是否开启定时任务 0：不开启 1：开启-->
     <timeTaskIntervalSecond>60</timeTaskIntervalSecond> <!--定时任务间隔，秒为单位-->
 </config>
