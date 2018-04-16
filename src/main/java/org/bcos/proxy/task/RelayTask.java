@@ -76,7 +76,7 @@ public class RelayTask {
 
                 UserInfo toUserInfo = null;
                 try {
-                    toUserInfo = HttpServer.getHotAccountInfo(nameSetServiceMap.get(hotAccountServiceChainName), hotAccount);
+                    toUserInfo = HttpServer.getAccountInfoByName(nameSetServiceMap.get(hotAccountServiceChainName), hotAccount, false);
                 } catch (Exception e) {
                     logger.error("get exception in queryUserInfo", e);
                     continue;
@@ -94,9 +94,10 @@ public class RelayTask {
 
                     HttpServer.WCS fromWCS = nameSetServiceMap.get(from);
                     try {
-                        UserInfo fromUserInfo = HttpServer.getHotAccountInfo(fromWCS, hotAccount);
-                        if (fromUserInfo == null || "".equals(fromUserInfo.getUid()) || fromUserInfo.getIdentity() != HttpServer.HOT_ACCOUNT) {
-                            logger.error("user info is null or hot account:{} not exist.", hotAccount);
+                        UserInfo fromUserInfo = HttpServer.getAccountInfoByName(fromWCS, hotAccount, true);
+                        if (fromUserInfo == null || "".equals(fromUserInfo.getUid()) || fromUserInfo.getIdentity() != HttpServer.SUB_HOT_ACCOUNT) {
+                            logger.error("from user info is null or sub hot account:{} uid:{}, identity:{} not exist.", hotAccount,
+                                    fromUserInfo == null ? "" : fromUserInfo.getUid(), fromUserInfo == null ? "" : fromUserInfo.getIdentity());
                             continue;
                         }
 

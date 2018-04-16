@@ -1,6 +1,8 @@
 package org.bcos.proxy.config;
 
 import lombok.Data;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
@@ -11,17 +13,21 @@ import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Created by fisco-dev on 17/8/27.
  */
 public @Data class Config {
 
-    private String privateKey;//发送交易的私钥
-    private String routeAddress;//route的合约地址
-    private List<String> hotAccountList;//hot account list
-    private String hotChainName;//hot chain
+    private static Logger logger = LoggerFactory.getLogger(Config.class);
+
+    private String privateKey;
+    private String routeAddress;
+    private List<String> hotAccountList;
+    private String hotChainName;
 
     public static int timeTaskIntervalSecond = 60;
     public static int enableTimeTask = 0;
@@ -78,7 +84,7 @@ public @Data class Config {
             try {
                 Config.timeTaskIntervalSecond = Integer.parseInt(timeTaskIntervalSecondStr);
             } catch (Exception e) {
-                e.printStackTrace();
+                logger.error("Exception for parseInt", e);
             }
         }
 
@@ -98,8 +104,17 @@ public @Data class Config {
 
         if (hotAccountNodeList != null){
             Node hotAccountNode =  hotAccountNodeList.item(0);
+            Map<String, Boolean> filterNameMap = new HashMap<>();
+
             for(String hotAccount : hotAccountNode.getTextContent().split(",")) {
-                hotAccountList.add(hotAccount);
+                String trimAccount = hotAccount.trim();
+                if ("".equals(trimAccount) || filterNameMap.containsKey(trimAccount)) {
+                    logger.error("hotAccount is empty or duplicated");
+                    continue;
+                }
+
+                filterNameMap.put(trimAccount, true);
+                hotAccountList.add(trimAccount);
             }
         }
 

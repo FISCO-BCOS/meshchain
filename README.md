@@ -54,8 +54,9 @@ babel-node deploy.js
 然后重启路由链的所有节点
 
 ```
-#找出路由链节点的所有rpc port对应的进程号
-netstat -npl | grep -E "port1|port2|port3|..."
+#找出路由链所有节点的所有rpc port. 如上图所示，单个节点的config.json的rpcport字段
+#假设有路由链四个节点
+netstat -npl | grep -E "port1|port2|port3|port4"
 killall ${proc1} ${proc2} ${proc3} ${proc4}
 ```
 
@@ -66,6 +67,10 @@ cd tool
 
 #替换 var proxy="http://ip:port"为路由链中某个节点的ip和rpc端口，保存
 vim config.json
+
+# Meshchain.sol相关合约可从以下方式获得
+git clone https://github.com/FISCO-BCOS/meshchain.git
+cp meshchain/src/main/resources/*.sol ./
 
 #注意Meshchain没有.sol结尾
 babel-node deploy.js Meshchain
@@ -135,7 +140,7 @@ vim config.xml
     <privateKey>bcec428d5205abe0f0cc8a734083908d9eb8563e31f943d760786edf42ad67dd</privateKey> <!--用作发送交易做签名的私钥-->
     <routeAddress>${routeAddress}</routeAddress> <!-- 路由合约，这个在启动proxy执行start.sh脚本时候会部署路由合约并替换这个变量-->
     <hotChainName>set2Service</hotChainName> <!--热点链的名字-->
-    <hotAccounts>routeService</hotAccounts> <!--热点账户的名字-->
+    <hotAccounts>fisco-dev</hotAccounts> <!--热点账户的名字-->
     <enableTimeTask>0</enableTimeTask> <!--是否开启定时任务 0：不开启 1：开启-->
     <timeTaskIntervalSecond>60</timeTaskIntervalSecond> <!--定时任务间隔，秒为单位-->
 </config>
@@ -150,6 +155,7 @@ vim config.xml
 在start.sh的脚本中，会有这么的一段命令来部署路由合约：
 
 ```
+#注意不用单独执行这行命令，sh start.sh过程中会部署
 java -cp conf/:apps/*:lib/* org.bcos.proxy.tool.DeployContract deploy conf/route.json
 ```
 
@@ -214,7 +220,7 @@ curl http://127.0.0.1:8081 -d '{"func":"register","uid":"1","version":"","contra
 2. uid：用作路由id，区分哪条分组链的用户
 3. version：合约版本
 4. contractName：合约名字
-5. params:参数数组，这里第一个参数表示用户初始金额，类型uint256;第二个参数是身份类型 0:普通用户 1:热点账户;第三个参数是用户名字。
+5. params:参数数组，这里第一个参数表示用户初始金额，类型uint256;第二个参数是身份类型 0:普通用户 1:热点账户 2:影子账户;第三个参数是用户名字。
 
 response响应:
 
@@ -320,6 +326,34 @@ response响应如下：
 uid:1, queryUserInfo get availAssets:290 unAvailAssets: 0, identity:1
 ```
 
+如果觉得当前某条分组链的容量需要扩大，那么可以执行以下的命令
+
+
+分组链扩容
+
+```
+cd meshchain/dist
+# 参数‘0 3 3’是对setid=0的容量设置 warnNum=3 maxNum=3
+java -cp conf/:apps/*:lib/* org.bcos.proxy.tool.DeployContract expandSet 0 3 3
+```
+response响应如下：
+
+```
+expandSet success.
+```
+
+查询某个分组链的容量信息
+
+```
+#参数‘0’代表查询的是setid=0的容量信息
+java -cp conf/:apps/*:lib/* org.bcos.proxy.tool.DeployContract getSetCapacity 0
+```
+
+response响应如下：
+
+```
+warn num:3, max num:3
+```
 
 # 热点账户
 

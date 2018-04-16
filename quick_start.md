@@ -7,6 +7,8 @@
 git clone https://github.com/FISCO-BCOS/FISCO-BCOS.git
 sh build.sh
 cd FISCO-BCOS/sample
+git clone https://github.com/FISCO-BCOS/meshchain.git
+cp meshchain/script/* ./ && cp meshchain/src/main/resources/*.sol ../tool
 sh init_meshchain.sh 4 1 127.0.0.1 127.0.0.1 127.0.0.1 127.0.0.1
 ```
 
@@ -43,7 +45,6 @@ cd ..
 步骤三：
 
 ```
-git clone https://github.com/FISCO-BCOS/meshchain.git
 cd meshchain
 
 #gradle安装说明，请参照https://gradle.org/install/
@@ -81,7 +82,7 @@ curl http://127.0.0.1:8081 -d '{"func":"register","uid":"1","version":"","contra
 2. uid：用作路由id，区分哪条分组链的用户
 3. version：合约版本
 4. contractName：合约名字
-5. params:参数数组，这里第一个参数表示用户初始金额，类型uint256;第二个参数是身份类型 0:普通用户 1:热点账户;第三个参数是用户名字。
+5. params:参数数组，这里第一个参数表示用户初始金额，类型uint256;第二个参数是身份类型 0:普通用户 1:热点账户 2:影子账户;第三个参数是用户名字。
 
 response响应:
 
@@ -186,7 +187,34 @@ response响应如下：
 uid:1, queryUserInfo get availAssets:290 unAvailAssets: 0, identity:1
 ```
 
+如果觉得当前某条分组链的容量需要扩大，那么可以执行以下的命令
 
+
+分组链扩容
+
+```
+cd meshchain/dist
+# 参数‘0 3 3’是对setid=0的容量设置 warnNum=3 maxNum=3
+java -cp conf/:apps/*:lib/* org.bcos.proxy.tool.DeployContract expandSet 0 3 3
+```
+response响应如下：
+
+```
+expandSet success.
+```
+
+查询某个分组链的容量信息
+
+```
+#参数‘0’代表查询的是setid=0的容量信息
+java -cp conf/:apps/*:lib/* org.bcos.proxy.tool.DeployContract getSetCapacity 0
+```
+
+response响应如下：
+
+```
+warn num:3, max num:3
+```
 ## 多机部署多链
 
 步骤一：
@@ -195,6 +223,8 @@ uid:1, queryUserInfo get availAssets:290 unAvailAssets: 0, identity:1
 git clone https://github.com/FISCO-BCOS/FISCO-BCOS.git
 sh build.sh
 cd FISCO-BCOS/sample
+git clone https://github.com/FISCO-BCOS/meshchain.git
+cp script/* ./ 
 
 #其中，链数目>=4 节点数目>=1 后面的ip是表示，ip0部署链0，ip1部署链1等等。默认情况下，链0部署路由链，其他链部署分组链，也称为set链。
 sh init_meshchain.sh <链的数目> <每条链的节点数目> <ip0> <ip1>...
@@ -220,7 +250,6 @@ sh start_meshchain.sh
 步骤一生成的proxyConfig.tar.gz中的文件需要拷贝到部署[proxy](https://github.com/FISCO-BCOS/meshchain.git) conf/下面的对应文件，执行
 
 ```
-git clone https://github.com/FISCO-BCOS/meshchain.git
 cd meshchain
 
 #gradle安装说明，请参照https://gradle.org/install/

@@ -34,7 +34,7 @@ contract Meshchain {
     	bytes32 uid;
     	uint availAssets;
     	uint unAvailAssets;
-    	uint8 identity;//0:普通账户 1:热点账户
+    	uint8 identity;//0:普通账户 1:热点账户 2:影子户
     	bytes32 name;//用户名字
     }
 
@@ -55,6 +55,7 @@ contract Meshchain {
 
     mapping(bytes32 => UserInfo) userMap;//uid as key
     mapping(bytes32 => bytes32) hotAccountMap;//name as key, uid as value
+    mapping(bytes32 => bytes32) subHotAccountMap;//name as key, uid as value
     mapping(uint => Transfer) transferMap;
     mapping(uint => Deposit) depositMap;
 
@@ -79,8 +80,19 @@ contract Meshchain {
 		if (identity == 1 && hotAccountMap[name] != "") {
 			retLog(10020);
 			return false;
-		} else if (identity == 1 && hotAccountMap[name] == "") {
+		} else if (identity == 1) {
+			if (hotAccountMap[name] != "") {
+				retLog(10020);
+				return false;
+			}
 			hotAccountMap[name] = user.uid;
+		} else if (identity == 2) {
+			if (subHotAccountMap[name] != "") {
+				retLog(10015);
+				return false;
+			}
+
+			subHotAccountMap[name] = user.uid;
 		}
 
 		userMap[uid] = user;
@@ -93,6 +105,11 @@ contract Meshchain {
 	function deposit(bytes32 uid, uint assets) public returns(bool) {
 		if (userMap[uid].uid == "") {
 			retLog(10003);
+			return false;
+		}
+
+		if (assets == 0) {
+			retLog(10018);
 			return false;
 		}
 
@@ -115,6 +132,11 @@ contract Meshchain {
         	retLog(10003);
 	    	return false;
         }
+
+		if (assets == 0) {
+    		retLog(10018);
+    		return false;
+    	}
 
         UserInfo storage fromUser = userMap[from];
         UserInfo storage toUser = userMap[to];
@@ -148,6 +170,11 @@ contract Meshchain {
 			return false;
 		}
 
+		if (assets == 0) {
+        	retLog(10018);
+        	return false;
+        }
+
 		UserInfo storage fromUser = userMap[from];
 		incrTrans += 1;
 		Transfer memory transfer = Transfer(incrTrans, from, to, assets, 0);
@@ -175,6 +202,11 @@ contract Meshchain {
 			retLog(10003);
 			return false;
 		}
+
+		if (assets == 0) {
+    		retLog(10018);
+    		return false;
+    	}
 
 		UserInfo storage toUser = userMap[to];
 		incrTrans += 1;
@@ -255,7 +287,7 @@ contract Meshchain {
         return (user.availAssets, user.unAvailAssets, user.identity, user.name);
     }
 
-    //get uid by hot account name
+    //get account by hot account name
     function getHotAccoutByName(bytes32 name) constant public returns(bytes32, uint, uint, uint) {
     	if (hotAccountMap[name] == "") {
     		return ("", 0, 0, 0);
@@ -266,4 +298,14 @@ contract Meshchain {
     	return (user.uid, user.availAssets, user.unAvailAssets, user.identity);
     }
 
+	//get account by sub hot account name
+    function getSubHotAccoutByName(bytes32 name) constant public returns(bytes32, uint, uint, uint) {
+    	if (subHotAccountMap[name] == "") {
+    		return ("", 0, 0, 0);
+    	}
+
+		bytes32 uid = subHotAccountMap[name];
+    	UserInfo storage user = userMap[uid];
+    	return (user.uid, user.availAssets, user.unAvailAssets, user.identity);
+    }
 }
