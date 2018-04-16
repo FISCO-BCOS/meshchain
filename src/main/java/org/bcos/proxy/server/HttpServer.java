@@ -14,11 +14,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 
 import com.alibaba.fastjson.JSONArray;
 import lombok.Data;
@@ -73,9 +69,11 @@ public class HttpServer extends AbstractHandler {
     public final static String CONTRACT_METHOD_TRANSFER_CONFIRM = "transferInterChainConfirm";
     public final static String CONTRACT_METHOD_USER_INFO = "getUserInfo";
     public final static String CONTRACT_METHOD_HOT_ACCOUNT_INFO = "getHotAccoutByName";
+    public final static String CONTRACT_METHOD_SUB_HOT_ACCOUNT_INFO = "getSubHotAccoutByName";
 
     public final static int NORMAL_ACCOUNT = 0;
-    public final static int HOT_ACCOUNT = 1;
+    public final static int HOT_ACCOUNT = 1;//hot account
+    public final static int SUB_HOT_ACCOUNT = 2;//sub hot account
 
     public final static int FUTURE_MAX_WAIT_SECOND = 5;
 
@@ -155,7 +153,7 @@ public class HttpServer extends AbstractHandler {
 
     private void initSevice() {
 
-        //先初始化route的
+        //init for route service
         Credentials credentialsRoute = Credentials.create(this.config.getPrivateKey());
         ApplicationContext context = new ClassPathXmlApplicationContext("classpath:applicationContext.xml");
         Service serviceRoute = (Service)context.getBean(ROUTE_SERVICE_NAME);
@@ -180,8 +178,11 @@ public class HttpServer extends AbstractHandler {
 
         try {
             //3s wait for building connection
+            logger.info("wait 3s for init services");
             Thread.sleep(3000);
-        } catch (InterruptedException e) {}
+        } catch (InterruptedException e) {
+            logger.error("InterruptedException for sleep.", e);
+        }
 
     }
 
@@ -292,147 +293,15 @@ public class HttpServer extends AbstractHandler {
                         }
 
                         int identity = userInfo.getIdentity();
+                        //from uid and to uid are in same chain or to uid is a hot account
                         if (setId.intValue() == toUidSetId.intValue() || identity == HOT_ACCOUNT) {
-                            //`from` and `to` are in same chain
-                            jsonObject.put("func", "transferOneChain");
-                            if (identity == HOT_ACCOUNT) {
-                                //get uid
-                                UserInfo hotAccount = getHotAccountInfo(wcs, userInfo.getName());
-                                if (hotAccount == null || "".equals(hotAccount.getUid()) || hotAccount.getIdentity() != HOT_ACCOUNT) {
-                                    response.getWriter().println(getResponse(-1, "", "not found hot account"));
-                                    return;
-                                }
-
-
-                                List<Object> newParams = new ArrayList<>();
-                                for (int i = 0; i < params.size(); i++) {
-                                    if (i == 1) {
-                                        //mean old uid,now use hot account uid to replace it
-                                        newParams.add(hotAccount.getUid());
-                                    } else {
-                                        newParams.add(params.get(i));
-                                    }
-                                }
-
-                                jsonObject.put("params", newParams);
-                            }
-
-                            final CompletableFuture<Rsp> transferFuture = new CompletableFuture<>();
-                            sendChainMessage(wcs, jsonObject.toJSONString(), transferFuture);
-                            Rsp rsp = transferFuture.get(FUTURE_MAX_WAIT_SECOND, TimeUnit.SECONDS);
-                            String data = "";
-                            if (rsp.getError().getCode().equals(Error.OK.getCode())) {
-                                JSONObject tmpJson = JSON.parseObject(rsp.getData());
-                                tmpJson.remove("blockHash");
-                                tmpJson.remove("transactionIndex");
-                                tmpJson.put("from_transfer_id", tmpJson.getString("transferId"));
-                                tmpJson.put("to_transfer_id", tmpJson.getString("transferId"));
-                                tmpJson.remove("transferId");
-                                data = tmpJson.toJSONString();
-                            }
-
-                            response.getWriter().println(getResponse(Integer.parseInt(rsp.getError().getCode()), data, rsp.getError().getDescription()));
+                            Rsp rsp = transferInSameChain(wcs, userReq.getUid(), toUid, userInfo.getName(), Integer.parseInt(params.get(2).toString()), identity, contractName, version);
+                            response.getWriter().println(getResponse(Integer.parseInt(rsp.getError().getCode()), rsp.getData(), rsp.getError().getDescription()));
                             return;
                         } else {
-                            //first to transfer in `from`
-                            jsonObject.put("func", "transferInterChainByFrom");
-                            final CompletableFuture<Rsp> transferFromFuture = new CompletableFuture<>();
-                            sendChainMessage(wcs, jsonObject.toJSONString(), transferFromFuture);
-                            Rsp rsp = transferFromFuture.get(FUTURE_MAX_WAIT_SECOND, TimeUnit.SECONDS);
-                            if (rsp.getError().getCode() != Error.OK.getCode()) {
-                                //get from error, return now
-                                response.getWriter().println(getResponse(Integer.parseInt(rsp.getError().getCode()), "", rsp.getError().getDescription()));
-                                return;
-                            }
-
-                            JSONObject jsonMerkleProof = getProofMerkle(wcs, rsp.getData());
-                            boolean verifyOk = false;
-
-                            try {
-                                verifyOk = verifySign(toWcs, jsonMerkleProof);
-                                if (!verifyOk) {
-                                    JSONObject jsonRsp = JSON.parseObject(rsp.getData());
-                                    final CompletableFuture<Rsp> cancelFuture = new CompletableFuture<>();
-                                    transferInterChainCancel(wcs, jsonRsp.getBigInteger("transferId"), cancelFuture);
-                                    Rsp cancelRsp = cancelFuture.get(FUTURE_MAX_WAIT_SECOND, TimeUnit.SECONDS);
-                                    if (cancelRsp.getError().getCode() != Error.OK.getCode()) {
-                                        logger.error("transferInterChainCancel error.transfer id:{}", jsonRsp.getBigInteger("transferId"));
-                                    }
-                                }
-                            } catch (Exception e) {
-                                logger.error("verifySign exception.", e);
-                            }
-
-                            if (!verifyOk) {
-                                response.getWriter().println(getResponse(Integer.parseInt(Error.CONTRACT_VERIFY_SIGN_ERROR.getCode()), "", Error.CONTRACT_VERIFY_SIGN_ERROR.getDescription()));
-                                return;
-                            }
-
-
-                            JSONObject jsonTransactionRsp = JSON.parseObject(rsp.getData());
-                            logger.debug("jsonMerkleProof:{}, jsonTransactionRsp:{}", jsonMerkleProof.toJSONString(), jsonTransactionRsp.toJSONString());
-
-
-                            List<Object> transferInterChainByToParamList= new ArrayList<>();
-                            transferInterChainByToParamList.add(jsonMerkleProof.getString("root"));
-
-                            JSONArray proofArr = jsonMerkleProof.getJSONArray("proofs");
-                            StringBuilder proofSb = new StringBuilder();
-                            for(Object proof : proofArr) {
-                                proofSb.append(proof.toString()).append(";");
-                            }
-
-                            String proofStr = "";
-                            if (proofSb.length() > 0) {
-                                proofStr = proofSb.substring(0, proofSb.length() - 1);
-                            }
-
-                            transferInterChainByToParamList.add(proofStr);
-                            transferInterChainByToParamList.add(jsonTransactionRsp.getString("transactionIndex"));
-                            transferInterChainByToParamList.add(jsonMerkleProof.getString("value"));
-                            transferInterChainByToParamList.add(userReq.getUid());//from
-                            transferInterChainByToParamList.add(toUid);//to
-                            transferInterChainByToParamList.add(params.get(2));//assets
-
-                            jsonObject.put("func", "transferInterChainByTo");
-                            jsonObject.put("params", transferInterChainByToParamList);
-
-                            final CompletableFuture<Rsp> transferToFuture = new CompletableFuture<>();
-                            sendChainMessage(toWcs, jsonObject.toJSONString(), transferToFuture);
-                            Rsp toRsp = transferToFuture.get(FUTURE_MAX_WAIT_SECOND, TimeUnit.SECONDS);
-                            if (toRsp.getError().getCode() != Error.OK.getCode()) {
-                                //get to error, cancel and return now.
-                                JSONObject jsonRsp = JSON.parseObject(rsp.getData());
-                                final CompletableFuture<Rsp> cancelFuture = new CompletableFuture<>();
-                                transferInterChainCancel(wcs, jsonRsp.getBigInteger("transferId"), cancelFuture);
-                                Rsp cancelRsp = cancelFuture.get(FUTURE_MAX_WAIT_SECOND, TimeUnit.SECONDS);
-                                if (cancelRsp.getError().getCode() != Error.OK.getCode()) {
-                                    logger.error("transferInterChainCancel error.transfer id:{}", jsonRsp.getBigInteger("transferId"));
-                                }
-
-                                response.getWriter().println(getResponse(Integer.parseInt(toRsp.getError().getCode()), "", toRsp.getError().getDescription()));
-                                return;
-                            }
-
-                            JSONObject jsonRsp = JSON.parseObject(rsp.getData());
-                            final CompletableFuture<Rsp> confirmFuture = new CompletableFuture<>();
-                            transferInterChainConfirm(wcs, jsonRsp.getBigInteger("transferId"), confirmFuture);
-                            Rsp confirmRsp = confirmFuture.get(FUTURE_MAX_WAIT_SECOND, TimeUnit.SECONDS);
-                            if (confirmRsp.getError().getCode() != Error.OK.getCode()) {
-                                //confirm error, cancel and return now.
-                                logger.error("transferInterChainConfirm error.transfer id:{}, jsonTransactionRsp:{}", jsonRsp.getBigInteger("transferId"), jsonTransactionRsp.toJSONString());
-                                response.getWriter().println(getResponse(Integer.parseInt(confirmRsp.getError().getCode()), "", confirmRsp.getError().getDescription()));
-                                return;
-                            }
-
-                            JSONObject tmpJson = JSON.parseObject("{}");
-                            JSONObject jsonFromRsp = JSON.parseObject(rsp.getData());
-                            JSONObject jsonToRsp = JSON.parseObject(toRsp.getData());
-
-                            tmpJson.put("from_transfer_id", jsonFromRsp.getString("transferId"));
-                            tmpJson.put("to_transfer_id", jsonToRsp.getString("transferId"));
-
-                            response.getWriter().println(getResponse(Integer.parseInt(confirmRsp.getError().getCode()), tmpJson.toJSONString(), confirmRsp.getError().getDescription()));
+                            //from uid and to uid are inter chain
+                            Rsp rsp = transferInterChain(wcs, toWcs, userReq.getUid(), toUid, Integer.parseInt(params.get(2).toString()), contractName, version);
+                            response.getWriter().println(getResponse(Integer.parseInt(rsp.getError().getCode()), rsp.getData(), rsp.getError().getDescription()));
                             return;
                         }
                 }
@@ -451,6 +320,13 @@ public class HttpServer extends AbstractHandler {
     }
 
 
+    /**
+     *
+     * @param uid user id
+     * @return set id
+     * @throws ExecutionException
+     * @throws InterruptedException
+     */
     private BigInteger registerUserInRouteIfAbsent(String uid) throws ExecutionException, InterruptedException {
 
         byte[] uidBytes = Arrays.copyOf(uid.getBytes(), 32);
@@ -458,7 +334,7 @@ public class HttpServer extends AbstractHandler {
 
         List<Type> typeList = this.routeManager.getRoute(uidByte32).get();
         if (typeList.size() != 2) {
-            //size跟RouteManager合约返回的两个元素保持一致
+            //size must match RouteManager contract return
             logger.error("get route error.uid:{}", uid);
             return null;
         }
@@ -474,20 +350,20 @@ public class HttpServer extends AbstractHandler {
         List<RouteManager.RegisterRetLogEventResponse> responses = routeManager.getRegisterRetLogEvents(transactionReceipt);
         List<Set.WarnEventResponse> warnResponseList = Set.getWarnEvents(transactionReceipt);
         if (warnResponseList.size() > 0) {
-            //有警告的日志
+            //catch warn size log
             Set.WarnEventResponse  warnResponse = warnResponseList.get(0);
             logger.warn("uid:{} register warn.code:{}, setId:{}, msg:{}", warnResponse.code.getValue(), warnResponse.setid.getValue(), warnResponse.msg);
         }
 
         if (responses.size() > 0) {
             RouteManager.RegisterRetLogEventResponse registerRetLogEventResponse = responses.get(0);
-            //第一个是bool，第二个是setId
+            //first on is bool, second is setId
             if (registerRetLogEventResponse.ok.getValue()) {
                 logger.info("uid:{} register ok", uid);
                 return registerRetLogEventResponse.set.getValue();
             } else {
                 //register failed
-                logger.error("uid:{} register failed.may be set is full...", uid);
+                logger.error("uid:{} register failed.may be set is full...setid:{}", uid, registerRetLogEventResponse.set.getValue().intValue());
                 return null;
             }
         } else {
@@ -506,6 +382,13 @@ public class HttpServer extends AbstractHandler {
         return rsp.toJSONString();
     }
 
+    /**
+     *
+     * @param setId
+     * @return set service
+     * @throws ExecutionException
+     * @throws InterruptedException
+     */
     private WCS getSetNameService(Uint256 setId) throws ExecutionException, InterruptedException {
         logger.info("getSetNameService setId:{}", setId.getValue());
         Future<Utf8String> addressFuture = this.routeManager.m_setNames(setId);
@@ -516,9 +399,189 @@ public class HttpServer extends AbstractHandler {
 
     /**
      *
-     * @param wcs 具体的service
-     * @param jsonStr 发送的内容
-     * @param future  主要是用到complete方法
+     * @param fromWCS from uid's service
+     * @param fromUid
+     * @param toUid
+     * @param toName to uid's username
+     * @param assets
+     * @param identity
+     * @param contractName contract name
+     * @param version contract version
+     * @return rsp contain code and data
+     * @throws Exception
+     */
+    public static Rsp transferInSameChain(WCS fromWCS, String fromUid, String toUid, String toName, int assets, int identity, String contractName, String version) throws Exception {
+        //`from` and `to` are in same chain
+        JSONObject jsonObject = JSON.parseObject("{}");
+        jsonObject.put("contract", contractName);
+        jsonObject.put("version", version);
+        jsonObject.put("func", "transferOneChain");
+        if (identity == HOT_ACCOUNT) {
+            //check toName if sub hot account
+            UserInfo hotAccount = getAccountInfoByName(fromWCS, toName, true);
+            if (hotAccount == null || "".equals(hotAccount.getUid()) || hotAccount.getIdentity() != SUB_HOT_ACCOUNT) {
+                logger.error("can not found sub account name:{}, fromUid:{}, toUid:{}", toName, fromUid, toUid);
+                Rsp rsp = new Rsp(Error.CONTRACT_USER_NOT_EXIST, "not found sub hot account");
+                return rsp;
+            }
+
+            List<Object> params = new ArrayList<>();
+            params.add(fromUid);
+            params.add(hotAccount.getUid());
+            params.add(assets);
+            jsonObject.put("params", params);
+        } else {
+            List<Object> params = new ArrayList<>();
+            params.add(fromUid);
+            params.add(toUid);
+            params.add(assets);
+            jsonObject.put("params", params);
+        }
+
+        final CompletableFuture<Rsp> transferFuture = new CompletableFuture<>();
+        sendChainMessage(fromWCS, jsonObject.toJSONString(), transferFuture);
+        Rsp rsp = transferFuture.get(FUTURE_MAX_WAIT_SECOND, TimeUnit.SECONDS);
+        if (rsp.getError().getCode().equals(Error.OK.getCode())) {
+            JSONObject tmpJson = JSON.parseObject(rsp.getData());
+            JSONObject resJson = JSON.parseObject("{}");
+            resJson.put("from_transfer_id", tmpJson.getString("transferId"));
+            resJson.put("to_transfer_id", tmpJson.getString("transferId"));
+            rsp.setData(resJson.toJSONString());
+        }
+
+        return rsp;
+    }
+
+    /**
+     *
+     * @param fromWCS from uid's service
+     * @param toWCS to uid's service
+     * @param fromUid
+     * @param toUid
+     * @param assets
+     * @param contractName contract name
+     * @param version contract version
+     * @return rsp contain code and data
+     * @throws Exception
+     */
+    public static Rsp transferInterChain(WCS fromWCS, WCS toWCS, String fromUid, String toUid, int assets, String contractName, String version) throws Exception {
+        //first to transfer in `from`
+        JSONObject jsonObject = JSON.parseObject("{}");
+        jsonObject.put("contract", contractName);
+        jsonObject.put("version", version);
+        jsonObject.put("func", "transferInterChainByFrom");
+        List<Object> params = new ArrayList<>();
+        params.add(fromUid);
+        params.add(toUid);
+        params.add(assets);
+        jsonObject.put("params", params);
+
+        final CompletableFuture<Rsp> transferFromFuture = new CompletableFuture<>();
+        sendChainMessage(fromWCS, jsonObject.toJSONString(), transferFromFuture);
+        Rsp rsp = transferFromFuture.get(FUTURE_MAX_WAIT_SECOND, TimeUnit.SECONDS);
+        if (rsp.getError().getCode() != Error.OK.getCode()) {
+            //get from error, return now
+            logger.error("error code for transferInterChainByFrom.code:{}", rsp.getError().getCode());
+            return rsp;
+        }
+
+        JSONObject jsonMerkleProof = getProofMerkle(fromWCS, rsp.getData());
+        boolean verifyOk = false;
+
+        try {
+            verifyOk = verifySign(toWCS, jsonMerkleProof);
+            if (!verifyOk) {
+                JSONObject jsonRsp = JSON.parseObject(rsp.getData());
+                final CompletableFuture<Rsp> cancelFuture = new CompletableFuture<>();
+                transferInterChainCancel(toWCS, jsonRsp.getBigInteger("transferId"), cancelFuture);
+                Rsp cancelRsp = cancelFuture.get(FUTURE_MAX_WAIT_SECOND, TimeUnit.SECONDS);
+                if (cancelRsp.getError().getCode() != Error.OK.getCode()) {
+                    logger.error("transferInterChainCancel error.transfer id:{}", jsonRsp.getBigInteger("transferId"));
+                    return cancelRsp;
+                }
+            }
+        } catch (Exception e) {
+            logger.error("verifySign exception.", e);
+        }
+
+        if (!verifyOk) {
+            logger.error("verify sign error.");
+            rsp.setError(Error.CONTRACT_VERIFY_SIGN_ERROR);
+            return rsp;
+        }
+
+        JSONObject jsonTransactionRsp = JSON.parseObject(rsp.getData());
+        logger.debug("jsonMerkleProof:{}, jsonTransactionRsp:{}", jsonMerkleProof.toJSONString(), jsonTransactionRsp.toJSONString());
+
+
+        List<Object> transferInterChainByToParamList= new ArrayList<>();
+        transferInterChainByToParamList.add(jsonMerkleProof.getString("root"));
+
+        JSONArray proofArr = jsonMerkleProof.getJSONArray("proofs");
+        StringBuilder proofSb = new StringBuilder();
+        for(Object proof : proofArr) {
+            proofSb.append(proof.toString()).append(";");
+        }
+
+        String proofStr = "";
+        if (proofSb.length() > 0) {
+            proofStr = proofSb.substring(0, proofSb.length() - 1);
+        }
+
+        transferInterChainByToParamList.add(proofStr);
+        transferInterChainByToParamList.add(jsonTransactionRsp.getString("transactionIndex"));
+        transferInterChainByToParamList.add(jsonMerkleProof.getString("value"));
+        transferInterChainByToParamList.add(fromUid);//from
+        transferInterChainByToParamList.add(toUid);//to
+        transferInterChainByToParamList.add(assets);//assets
+
+        jsonObject.put("func", "transferInterChainByTo");
+        jsonObject.put("params", transferInterChainByToParamList);
+
+        final CompletableFuture<Rsp> transferToFuture = new CompletableFuture<>();
+        sendChainMessage(toWCS, jsonObject.toJSONString(), transferToFuture);
+        Rsp toRsp = transferToFuture.get(FUTURE_MAX_WAIT_SECOND, TimeUnit.SECONDS);
+        if (toRsp.getError().getCode() != Error.OK.getCode()) {
+            //get to error, cancel and return now.
+            JSONObject jsonRsp = JSON.parseObject(rsp.getData());
+            final CompletableFuture<Rsp> cancelFuture = new CompletableFuture<>();
+            transferInterChainCancel(toWCS, jsonRsp.getBigInteger("transferId"), cancelFuture);
+            Rsp cancelRsp = cancelFuture.get(FUTURE_MAX_WAIT_SECOND, TimeUnit.SECONDS);
+            if (cancelRsp.getError().getCode() != Error.OK.getCode()) {
+                logger.error("transferInterChainCancel error.transfer id:{}", jsonRsp.getBigInteger("transferId"));
+            }
+
+            logger.error("error for transferInterChainByTo.code:{}", toRsp.getError().getCode());
+            return toRsp;
+        }
+
+        JSONObject jsonRsp = JSON.parseObject(rsp.getData());
+        final CompletableFuture<Rsp> confirmFuture = new CompletableFuture<>();
+        transferInterChainConfirm(fromWCS, jsonRsp.getBigInteger("transferId"), confirmFuture);
+        Rsp confirmRsp = confirmFuture.get(FUTURE_MAX_WAIT_SECOND, TimeUnit.SECONDS);
+        if (confirmRsp.getError().getCode() != Error.OK.getCode()) {
+            //confirm error, cancel and return now.
+            logger.error("transferInterChainConfirm error.transfer id:{}, jsonTransactionRsp:{}", jsonRsp.getBigInteger("transferId"), jsonTransactionRsp.toJSONString());
+            return confirmRsp;
+        }
+
+        JSONObject tmpJson = JSON.parseObject("{}");
+        JSONObject jsonFromRsp = JSON.parseObject(rsp.getData());
+        JSONObject jsonToRsp = JSON.parseObject(toRsp.getData());
+
+        tmpJson.put("from_transfer_id", jsonFromRsp.getString("transferId"));
+        tmpJson.put("to_transfer_id", jsonToRsp.getString("transferId"));
+
+        rsp.setError(Error.OK);
+        rsp.setData(tmpJson.toJSONString());
+        return rsp;
+    }
+
+    /**
+     *
+     * @param wcs set service
+     * @param jsonStr cns json req
+     * @param future
      * @return boolean
      * @throws IOException
      */
@@ -541,7 +604,7 @@ public class HttpServer extends AbstractHandler {
         request.setTransactionSucCallback(new TransactionSucCallback() {
             @Override
             public void onResponse(EthereumResponse ethereumResponse) {
-                //这里收到交易成功的通知
+                //receipt transaction success notify
                 try {
                     logger.debug("onResponse callback content:{}", ethereumResponse.getContent());
                     TransactionReceipt transactionReceipt = objectMapper.readValue(ethereumResponse.getContent(), TransactionReceipt.class);
@@ -612,7 +675,7 @@ public class HttpServer extends AbstractHandler {
     }
 
     /**
-     * @desc 获取交易merkle证明的数据
+     * @desc transaction merkle proof
      * @param wcs
      * @param jsonStr {"blockHash":"", "transactionIndex:""}
      * @return {"root":"", "proofs":[], "pubs":[], "value":""}
@@ -662,7 +725,6 @@ public class HttpServer extends AbstractHandler {
      */
     public static boolean verifySign(WCS wcs, JSONObject jsonMerkleProof) throws ExecutionException, InterruptedException {
         String hash = jsonMerkleProof.getString("hash");
-        //拼接签名和公钥
         JSONArray pubArr = jsonMerkleProof.getJSONArray("pubs");
         StringBuilder pubSb = new StringBuilder();
         for(Object pub : pubArr) {
@@ -748,7 +810,7 @@ public class HttpServer extends AbstractHandler {
     }
 
     /**
-     * @desc 主意是要查用户信息
+     * @desc get user info
      * @param uid
      */
     public static UserInfo queryUserInfo(WCS wcs, String uid) throws Exception {
@@ -774,7 +836,7 @@ public class HttpServer extends AbstractHandler {
         EthCall ethCall = web3j.ethCall(Transaction.createEthCallTransaction(null, null, data), DefaultBlockParameterName.LATEST).sendAsync().get();
         String value = ethCall.getResult();
         JSONArray array = JSON.parseArray(value);
-        if (array.size() == 0) {
+        if (array.size() != 4) {
             logger.error("queryUserInfo array size 0");
             return null;
         }
@@ -790,10 +852,11 @@ public class HttpServer extends AbstractHandler {
     }
 
     /**
-     * @desc 主意是要查热点用户信息
-     * @param name 用户名
+     * @desc get hot account or sub hot account info
+     * @param name account name
+     * @param sub true: sub hot account false:
      */
-    public static UserInfo getHotAccountInfo(WCS wcs, String name) throws Exception {
+    public static UserInfo getAccountInfoByName(WCS wcs, String name, boolean sub) throws Exception {
         Web3j web3j = wcs.getWeb3j();
 
         if (web3j == null) {
@@ -803,7 +866,12 @@ public class HttpServer extends AbstractHandler {
 
         JSONObject jsonObject = JSON.parseObject("{}");
         jsonObject.put("contract", CONTRACT_NAME);
-        jsonObject.put("func", CONTRACT_METHOD_HOT_ACCOUNT_INFO);
+        if (!sub) {
+            jsonObject.put("func", CONTRACT_METHOD_HOT_ACCOUNT_INFO);
+        } else {
+            jsonObject.put("func", CONTRACT_METHOD_SUB_HOT_ACCOUNT_INFO);
+        }
+
         jsonObject.put("version", "");
 
         List<Object> params = new ArrayList<>();

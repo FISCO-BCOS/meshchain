@@ -1,25 +1,23 @@
 package org.bcos.proxy.tool;
 
-import org.apache.http.HttpResponse;
-import org.apache.http.HttpStatus;
-import org.apache.http.client.HttpClient;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.entity.StringEntity;
-import org.apache.http.impl.client.HttpClientBuilder;
-import org.apache.http.util.EntityUtils;
 import org.bcos.channel.client.Service;
+import org.bcos.channel.client.TransactionSucCallback;
+import org.bcos.channel.dto.EthereumResponse;
 import org.bcos.proxy.config.Config;
 import org.bcos.proxy.contract.Node;
 import org.bcos.proxy.contract.RouteManager;
 import org.bcos.proxy.contract.Set;
 import org.bcos.proxy.protocol.UserInfo;
 import org.bcos.proxy.server.HttpServer;
+import org.bcos.proxy.util.ToolUtil;
 import org.bcos.web3j.abi.datatypes.Address;
+import org.bcos.web3j.abi.datatypes.Bool;
 import org.bcos.web3j.abi.datatypes.Type;
 import org.bcos.web3j.abi.datatypes.Utf8String;
 import org.bcos.web3j.abi.datatypes.generated.Bytes32;
 import org.bcos.web3j.abi.datatypes.generated.Uint256;
 import org.bcos.web3j.crypto.Credentials;
+import org.bcos.web3j.protocol.ObjectMapperFactory;
 import org.bcos.web3j.protocol.Web3j;
 import org.bcos.web3j.protocol.channel.ChannelEthereumService;
 import org.bcos.web3j.protocol.core.DefaultBlockParameterName;
@@ -36,9 +34,13 @@ import org.springframework.context.support.ClassPathXmlApplicationContext;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.math.BigInteger;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
 /**
@@ -88,9 +90,9 @@ public class DeployContract {
     }
 
     /**
-     * @desc 读取json文件,格式如下
+     * @desc read json file,format like:[{"set_name":"", "set_warn_num":8,"set_max_num":10,"set_node_list":[{"ip":"","p2p_port":12,"rpc_port":34,"node_id":"","type":1}]}]
      * @param fileName
-     * @return JSONObject[{"set_name":"", "set_warn_num":8,"set_max_num":10,"set_node_list":[{"ip":"","p2p_port":12,"rpc_port":34,"node_id":"","type":1}]}]
+     * @return JSONObject
      * @throws IOException
      */
     public static JSONArray readJSONFile(String fileName) throws IOException {
@@ -107,7 +109,7 @@ public class DeployContract {
     }
 
     /**
-     * @desc 部署合约
+     * @desc deploy route contract
      * @param jsonArray
      * @throws Exception
      */
@@ -161,7 +163,7 @@ public class DeployContract {
 
 
     /**
-     * @desc 主意是要查用户信息
+     * @desc get user info
      * @param uid
      */
     public static UserInfo queryUserInfo(String uid) throws Exception {
@@ -217,68 +219,209 @@ public class DeployContract {
         String name = array.getString(3);
 
         UserInfo userInfo = new UserInfo(uid, availAssets, unAvailAssets, identity, name);
+        System.out.printf("uid:%s,set id:%d\n", uid, setId.intValue());
         return userInfo;
 
     }
 
-
-    public static String doPost(String url, String jsonStr) throws Exception {
-        String result = null;
-        HttpClient httpClient = HttpClientBuilder.create().build();
-        HttpPost post = new HttpPost(url);
-        StringEntity postingString = new StringEntity(jsonStr);
-        post.setEntity(postingString);
-        post.setHeader("Content-type", "application/json");
-        HttpResponse response = httpClient.execute(post);
-        try {
-            if (response.getStatusLine().getStatusCode() != HttpStatus.SC_OK) {
-                throw new Exception("http code is not 200");
-            } else {
-                result = new String(EntityUtils.toString(response.getEntity()));
-            }
-        } catch (Exception e) {
-            throw new Exception("deal respose exception.",e);
+    public static void getSetUsers(int setId) throws Exception {
+        if (setId < 0) {
+            System.out.println("set id error: set id:" + setId);
+            return;
         }
 
-        return result;
+        RouteManager routeManager = RouteManager.load(Config.getConfig().getRouteAddress(), routeWCS.getWeb3j(), routeWCS.getCredentials(), gasPrice, gasLimit);
+        List<Type> typeList = routeManager.getSetAddress(new Uint256(setId)).get();
+        if (typeList.size() != 2) {
+            System.out.println("get setId:" + setId + " failed");
+            return;
+        }
+
+        Bool ok = (Bool)typeList.get(0);
+        Address setAddress = (Address)typeList.get(1);
+
+        if (!ok.getValue()) {
+            System.out.println("setId:" + setId + " not existed");
+            return;
+        }
+
+        Set set = Set.load(setAddress.toString(), routeWCS.getWeb3j(), routeWCS.getCredentials(), gasPrice, gasLimit);
+        Uint256 userNum = set.getUsersNum().get();
+
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < userNum.getValue().intValue(); i++) {
+            Bytes32 user = set.m_users(new Uint256(i)).get();
+            sb.append(ToolUtil.byte32ToString(user.getValue())).append(",");
+        }
+
+        String users = sb.toString();
+        if (users.length() > 0) {
+            users = users.substring(0, users.length() - 1);
+        }
+
+        System.out.println("set id :" + setId + ", users:[" + users + "]");
+    }
+
+    /**
+     * @desc get set capacity
+     * @param setId
+     * @throws Exception
+     */
+    public static void getSetCapacity(int setId) throws Exception {
+        if (setId < 0) {
+            System.out.println("set id error: set id:" + setId);
+            return;
+        }
+
+        RouteManager routeManager = RouteManager.load(Config.getConfig().getRouteAddress(), routeWCS.getWeb3j(), routeWCS.getCredentials(), gasPrice, gasLimit);
+        List<Type> typeList = routeManager.getSetAddress(new Uint256(setId)).get();
+        if (typeList.size() != 2) {
+            System.out.println("get setId:" + setId + " failed");
+            return;
+        }
+
+        Bool ok = (Bool)typeList.get(0);
+        Address setAddress = (Address)typeList.get(1);
+
+        if (!ok.getValue()) {
+            System.out.println("setId:" + setId + " not existed");
+            return;
+        }
+
+        Set set = Set.load(setAddress.toString(), routeWCS.getWeb3j(), routeWCS.getCredentials(), gasPrice, gasLimit);
+        List<Type> retListType = set.getSetCapacity().get();
+
+        if (retListType.size() != 2) {
+            System.out.println("get set capacity failed");
+            return;
+        }
+
+        Uint256 warn = (Uint256)retListType.get(0);
+        Uint256 max = (Uint256)retListType.get(1);
+
+        System.out.println("warn num:" + warn.getValue().intValue() + ", max num:" + max.getValue().intValue());
+    }
+
+    /**
+     * @desc  expand set capacity
+     * @param setId
+     * @param warn
+     * @param max
+     * @throws Exception
+     */
+    public static void expandSet(int setId, int warn, int max) throws Exception {
+        if (setId < 0) {
+            System.out.println("set id error: set id:" + setId);
+            return;
+        }
+
+        RouteManager routeManager = RouteManager.load(Config.getConfig().getRouteAddress(), routeWCS.getWeb3j(), routeWCS.getCredentials(), gasPrice, gasLimit);
+        List<Type> typeList = routeManager.getSetAddress(new Uint256(setId)).get();
+        if (typeList.size() != 2) {
+            System.out.println("get setId:" + setId + " failed");
+            return;
+        }
+
+        Bool ok = (Bool)typeList.get(0);
+        Address setAddress = (Address)typeList.get(1);
+
+        if (!ok.getValue()) {
+            System.out.println("setId:" + setId + " not existed");
+            return;
+        }
+
+
+        Set set = Set.load(setAddress.toString(), routeWCS.getWeb3j(), routeWCS.getCredentials(), gasPrice, gasLimit);
+        set.expandSet(new Uint256(max), new Uint256(warn), new TransactionSucCallback() {
+            @Override
+            public void onResponse(EthereumResponse ethereumResponse) {
+                try {
+                    TransactionReceipt transactionReceipt = ObjectMapperFactory.getObjectMapper().readValue(ethereumResponse.getContent(), TransactionReceipt.class);
+                    List<Set.RetEventResponse> retEventResponseList = Set.getRetEvents(transactionReceipt);
+                    if (retEventResponseList.size() != 1) {
+                        System.out.println("get expandSet event log failed.");
+                        return;
+                    }
+
+                    Set.RetEventResponse retEventResponse = retEventResponseList.get(0);
+                    if (retEventResponse.code.getValue().intValue() == 0) {
+                        System.out.println("expandSet success.");
+                    } else {
+                        System.out.println("expandSet failed.code:" + retEventResponse.code.getValue().intValue());
+                    }
+
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        });
     }
 
 
     public static void main(String[] args) throws Exception {
 
-        if (args == null || args.length < 2) {
+        if (args.length < 1 || args[0] == "-h") {
             System.out.println("usage:[deploy route.json");
             System.out.println("      [queryUserInfo $uid");
-            //System.out.println("      [demo $requestStr]");
+            System.out.println("      [expandSet $setid $warnNum $maxNum");
+            System.out.println("      [getSetCapacity $setid");
             System.exit(0);
         }
 
-        if ("deploy".equals(args[0])) {
-            JSONArray jsonArray = readJSONFile(args[1]);
-            deployContract(jsonArray);
-        } else if("queryUserInfo".equals(args[0])) {
-            UserInfo userInfo = queryUserInfo(args[1]);
-            System.out.printf("uid:%s, queryUserInfo get availAssets:%d unAvailAssets: %d, identity:%d, name:%s\n", userInfo.getUid(),
-                    userInfo.getAvailAssets(), userInfo.getUnAvailAssets(), userInfo.getIdentity(), userInfo.getName());
-        } else if ("demo".equals(args[0])){
-            //demoForQueryMerchantAssets(args[1]);
-        } else {
-            System.out.println("not support method");
+        switch (args[0]) {
+            case "deploy":
+                if (args.length < 2) {
+                    System.out.println("miss the route.json file");
+                    return;
+                }
+
+                JSONArray jsonArray = readJSONFile(args[1]);
+                deployContract(jsonArray);
+                break;
+            case "queryUserInfo":
+                if (args.length < 2) {
+                    System.out.println("miss the uid");
+                    return;
+                }
+                UserInfo userInfo = queryUserInfo(args[1]);
+                if (userInfo == null) {
+                    System.out.println("uid:" + args[1] + " not exist");
+                    return;
+                }
+
+                System.out.printf("uid:%s, queryUserInfo get availAssets:%d unAvailAssets: %d, identity:%d, name:%s\n", userInfo.getUid(),
+                        userInfo.getAvailAssets(), userInfo.getUnAvailAssets(), userInfo.getIdentity(), userInfo.getName());
+                break;
+            case "expandSet":
+                if (args.length < 4) {
+                    System.out.println("miss the args:$setid $warnNum $maxNum");
+                    return;
+                }
+
+                expandSet(Integer.parseInt(args[1]), Integer.parseInt(args[2]), Integer.parseInt(args[3]));
+                break;
+            case "getSetCapacity":
+                if (args.length < 2) {
+                    System.out.println("miss the $setid");
+                    return;
+                }
+
+                getSetCapacity(Integer.parseInt(args[1]));
+                break;
+            case "getSetUsers":
+                if (args.length < 2) {
+                    System.out.println("miss the $setid");
+                    return;
+                }
+
+                getSetUsers(Integer.parseInt(args[1]));
+                break;
+            default:
+                System.out.println("not support command");
+                return;
         }
 
         Thread.sleep(3 * 1000);
         System.exit(0);
-
-        /*
-        String jsonFile = args[0];
-        String str = "{\"contract\":\"transactionTest\",\"func\":\"add\",\"version\":\"\",\"params\":[1]}";
-        Random r = new Random();
-        BigInteger randomid = new BigInteger(250, r);
-        BigInteger blockLimit = web3j.getBlockNumberCache();
-        RawTransaction rawTransaction = RawTransaction.createTransaction(randomid, gasPrice, gasLimit, blockLimit, "", Numeric.toHexString(str.getBytes()));
-        String signMsg = Numeric.toHexString(TransactionEncoder.signMessage(rawTransaction, credentials));
-        Request request =  web3j.ethSendRawTransaction(signMsg);
-        Response response = request.send();*/
-
     }
 }
