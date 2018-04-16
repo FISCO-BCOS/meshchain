@@ -7,7 +7,7 @@
 git clone https://github.com/FISCO-BCOS/FISCO-BCOS.git
 sh build.sh
 cd FISCO-BCOS/sample
-git clone https://github.com/FISCO-BCOS/meshchain.git
+git clone https://github.com/iamyh/meshchain.git
 cp meshchain/script/* ./ && cp meshchain/src/main/resources/*.sol ../tool
 sh init_meshchain.sh 4 1 127.0.0.1 127.0.0.1 127.0.0.1 127.0.0.1
 ```
@@ -223,7 +223,7 @@ warn num:3, max num:3
 git clone https://github.com/FISCO-BCOS/FISCO-BCOS.git
 sh build.sh
 cd FISCO-BCOS/sample
-git clone https://github.com/FISCO-BCOS/meshchain.git
+git clone https://github.com/iamyh/meshchain.git
 cp script/* ./ 
 
 #其中，链数目>=4 节点数目>=1 后面的ip是表示，ip0部署链0，ip1部署链1等等。默认情况下，链0部署路由链，其他链部署分组链，也称为set链。
@@ -247,7 +247,7 @@ sh start_meshchain.sh
 
 步骤三：
 
-步骤一生成的proxyConfig.tar.gz中的文件需要拷贝到部署[proxy](https://github.com/FISCO-BCOS/meshchain.git) conf/下面的对应文件，执行
+步骤一生成的proxyConfig.tar.gz中的文件需要拷贝到部署[proxy](https://github.com/iamyh/meshchain.git) conf/下面的对应文件，执行
 
 ```
 cd meshchain
