@@ -134,9 +134,14 @@ public class HttpServer extends AbstractHandler {
     }
 
     public void init() {
-        this.initSevice();
-        this.initRouteManager();
-        this.initRelayTask();
+        try {
+            this.initSevice();
+            this.initRouteManager();
+            this.initRelayTask();
+        } catch (Exception e) {
+            logger.error("init exception", e);
+        }
+
     }
 
 
@@ -151,7 +156,7 @@ public class HttpServer extends AbstractHandler {
         }
     }
 
-    private void initSevice() {
+    private void initSevice() throws InterruptedException {
 
         //init for route service
         Credentials credentialsRoute = Credentials.create(this.config.getPrivateKey());
@@ -182,6 +187,7 @@ public class HttpServer extends AbstractHandler {
             Thread.sleep(3000);
         } catch (InterruptedException e) {
             logger.error("InterruptedException for sleep.", e);
+            throw e;
         }
 
     }
@@ -211,11 +217,13 @@ public class HttpServer extends AbstractHandler {
 
         try {
             UserReq userReq = objectMapper.readValue(content, UserReq.class);
-            if (ToolUtil.isEmpty(userReq.getFunc()) || ToolUtil.isEmpty(userReq.getContractName())
+            if (ToolUtil.isEmpty(userReq.getUid())
+                    || ToolUtil.isEmpty(userReq.getFunc())
+                    || ToolUtil.isEmpty(userReq.getContractName())
                     || userReq.getParams() == null
                     || userReq.getParams().size() == 0) {
 
-                response.getWriter().println(getResponse(-1, "", "func,contract name, or params is empty"));
+                response.getWriter().println(getResponse(-1, "", "uid, func,contract name, or params is empty"));
                 return;
             }
 
@@ -238,30 +246,43 @@ public class HttpServer extends AbstractHandler {
             jsonObject.put("params", params);
 
             if (!ToolUtil.isEmpty(userReq.getUid())) {
-                BigInteger setId = registerUserInRouteIfAbsent(userReq.getUid());
-                if (setId == null) {
-                    response.getWriter().println(getResponse(Integer.parseInt(Error.USER_REGISTER_ERROR.getCode()), "", Error.USER_REGISTER_ERROR.getDescription()));
-                    return;
-                }
-
-                WCS wcs = getSetNameService(new Uint256(setId));
-                if (wcs == null) {
-                    response.getWriter().println(getResponse(Integer.parseInt(Error.SERVICE_ERROR.getCode()), "", Error.SERVICE_ERROR.getDescription()));
-                    return;
-                }
 
                 switch (func) {
                     case CONTRACT_METHOD_DEPOSIT:
+                        BigInteger fromSetId = getUserSetInRoute(userReq.getUid(), false);
+                        if (fromSetId == null) {
+                            response.getWriter().println(getResponse(Integer.parseInt(Error.CONTRACT_USER_NOT_EXIST.getCode()), "", Error.CONTRACT_USER_NOT_EXIST.getDescription()));
+                            return;
+                        }
+
+                        WCS fromWcs = getSetNameService(new Uint256(fromSetId));
+                        if (fromWcs == null) {
+                            response.getWriter().println(getResponse(Integer.parseInt(Error.SERVICE_ERROR.getCode()), "", Error.SERVICE_ERROR.getDescription()));
+                            return;
+                        }
+
                         jsonObject.put("func", CONTRACT_METHOD_DEPOSIT);
                         final CompletableFuture<Rsp> depFuture = new CompletableFuture<>();
-                        sendChainMessage(wcs, jsonObject.toJSONString(), depFuture);
+                        sendChainMessage(fromWcs, jsonObject.toJSONString(), depFuture);
                         Rsp depRsp = depFuture.get(FUTURE_MAX_WAIT_SECOND, TimeUnit.SECONDS);
                         response.getWriter().println(getResponse(Integer.parseInt(depRsp.getError().getCode()), depRsp.getData() == null ? "" : depRsp.getData(), depRsp.getError().getDescription()));
                         return;
                     case CONTRACT_METHOD_REGISTER:
+                        fromSetId = getUserSetInRoute(userReq.getUid(), true);
+                        if (fromSetId == null) {
+                            response.getWriter().println(getResponse(Integer.parseInt(Error.CONTRACT_USER_NOT_EXIST.getCode()), "", Error.CONTRACT_USER_NOT_EXIST.getDescription()));
+                            return;
+                        }
+
+                        fromWcs = getSetNameService(new Uint256(fromSetId));
+                        if (fromWcs == null) {
+                            response.getWriter().println(getResponse(Integer.parseInt(Error.SERVICE_ERROR.getCode()), "", Error.SERVICE_ERROR.getDescription()));
+                            return;
+                        }
+
                         jsonObject.put("func", CONTRACT_METHOD_REGISTER);
                         final CompletableFuture<Rsp> registerFuture = new CompletableFuture<>();
-                        sendChainMessage(wcs, jsonObject.toJSONString(), registerFuture);
+                        sendChainMessage(fromWcs, jsonObject.toJSONString(), registerFuture);
                         Rsp registerRsp = registerFuture.get(FUTURE_MAX_WAIT_SECOND, TimeUnit.SECONDS);
                         response.getWriter().println(getResponse(Integer.parseInt(registerRsp.getError().getCode()), registerRsp.getData() == null ? "" : registerRsp.getData(), registerRsp.getError().getDescription()));
                         return;
@@ -272,8 +293,20 @@ public class HttpServer extends AbstractHandler {
                             return;
                         }
 
+                        fromSetId = getUserSetInRoute(userReq.getUid(), false);
+                        if (fromSetId == null) {
+                            response.getWriter().println(getResponse(Integer.parseInt(Error.CONTRACT_USER_NOT_EXIST.getCode()), "", "from " + Error.CONTRACT_USER_NOT_EXIST.getDescription()));
+                            return;
+                        }
+
+                        fromWcs = getSetNameService(new Uint256(fromSetId));
+                        if (fromWcs == null) {
+                            response.getWriter().println(getResponse(Integer.parseInt(Error.SERVICE_ERROR.getCode()), "", Error.SERVICE_ERROR.getDescription()));
+                            return;
+                        }
+
                         String toUid = params.get(1).toString();
-                        BigInteger toUidSetId = registerUserInRouteIfAbsent(toUid);
+                        BigInteger toUidSetId = getUserSetInRoute(toUid, false);
                         if (toUidSetId == null) {
                             response.getWriter().println(getResponse(Integer.parseInt(Error.USER_REGISTER_ERROR.getCode()), "", Error.USER_REGISTER_ERROR.getDescription()));
                             return;
@@ -294,13 +327,13 @@ public class HttpServer extends AbstractHandler {
 
                         int identity = userInfo.getIdentity();
                         //from uid and to uid are in same chain or to uid is a hot account
-                        if (setId.intValue() == toUidSetId.intValue() || identity == HOT_ACCOUNT) {
-                            Rsp rsp = transferInSameChain(wcs, userReq.getUid(), toUid, userInfo.getName(), Integer.parseInt(params.get(2).toString()), identity, contractName, version);
+                        if (fromSetId.intValue() == toUidSetId.intValue() || identity == HOT_ACCOUNT) {
+                            Rsp rsp = transferInSameChain(fromWcs, userReq.getUid(), toUid, userInfo.getName(), Integer.parseInt(params.get(2).toString()), identity, contractName, version);
                             response.getWriter().println(getResponse(Integer.parseInt(rsp.getError().getCode()), rsp.getData(), rsp.getError().getDescription()));
                             return;
                         } else {
                             //from uid and to uid are inter chain
-                            Rsp rsp = transferInterChain(wcs, toWcs, userReq.getUid(), toUid, Integer.parseInt(params.get(2).toString()), contractName, version);
+                            Rsp rsp = transferInterChain(fromWcs, toWcs, userReq.getUid(), toUid, Integer.parseInt(params.get(2).toString()), contractName, version);
                             response.getWriter().println(getResponse(Integer.parseInt(rsp.getError().getCode()), rsp.getData(), rsp.getError().getDescription()));
                             return;
                         }
@@ -322,12 +355,13 @@ public class HttpServer extends AbstractHandler {
 
     /**
      *
-     * @param uid user id
+     * @param uid
+     * @param regiserIfAbsent
      * @return set id
      * @throws ExecutionException
      * @throws InterruptedException
      */
-    private BigInteger registerUserInRouteIfAbsent(String uid) throws ExecutionException, InterruptedException {
+    private BigInteger getUserSetInRoute(String uid, boolean regiserIfAbsent) throws ExecutionException, InterruptedException {
 
         byte[] uidBytes = Arrays.copyOf(uid.getBytes(), 32);
         Bytes32 uidByte32 = new Bytes32(uidBytes);
@@ -346,13 +380,18 @@ public class HttpServer extends AbstractHandler {
             return setId;
         }
 
+        if (!regiserIfAbsent) {
+            logger.warn("uid:{} not existed", uid);
+            return null;
+        }
+
         TransactionReceipt transactionReceipt = this.routeManager.registerRoute(uidByte32).get();
         List<RouteManager.RegisterRetLogEventResponse> responses = routeManager.getRegisterRetLogEvents(transactionReceipt);
         List<Set.WarnEventResponse> warnResponseList = Set.getWarnEvents(transactionReceipt);
         if (warnResponseList.size() > 0) {
             //catch warn size log
             Set.WarnEventResponse  warnResponse = warnResponseList.get(0);
-            logger.warn("uid:{} register warn.code:{}, setId:{}, msg:{}", warnResponse.code.getValue(), warnResponse.setid.getValue(), warnResponse.msg);
+            logger.warn("uid:{} register warn.code:{}, setId:{}, msg:{}", uid, warnResponse.code.getValue(), warnResponse.setid.getValue(), warnResponse.msg);
         }
 
         if (responses.size() > 0) {

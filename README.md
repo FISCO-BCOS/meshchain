@@ -22,7 +22,7 @@
 
 分了简化步骤，下面配置将会是：一条路由链，三条分组链。
 
-1. 首先部署路由链。
+首先部署路由链。
 
 fisco-bcos搭建步骤：请参照[安装说明](https://github.com/FISCO-BCOS/FISCO-BCOS)
 
@@ -32,14 +32,16 @@ fisco-bcos搭建步骤：请参照[安装说明](https://github.com/FISCO-BCOS/F
 cat config.json
 ```
 
-得到该RPC端口后，开始进行部署系统合约(假设当前目录是FISCO-BCOS)：
+得到该RPC端口(rpcport字段)后，开始进行部署系统合约(假设当前目录是FISCO-BCOS)：
 
 ```
-cd systemcontractv2
+cd web3lib
 
 #替换 var proxy="http://ip:port"为节点的ip和rpc端口，保存
 vim config.json
 
+# 回到上一层目录的systemcontractv2目录
+cd ../systemcontractv2
 babel-node deploy.js
 ```
 
@@ -63,10 +65,8 @@ killall ${proc1} ${proc2} ${proc3} ${proc4}
 重启后，然后部署Meshchain.sol合约（假设当前目录是FISCO-BCOS）：
 
 ```
+# 回到上一层目录，然后进入tool目录（当前目录为FISCO-BCOS）
 cd tool
-
-#替换 var proxy="http://ip:port"为路由链中某个节点的ip和rpc端口，保存
-vim config.json
 
 # Meshchain.sol相关合约可从以下方式获得
 git clone https://github.com/FISCO-BCOS/meshchain.git
@@ -75,12 +75,12 @@ cp meshchain/src/main/resources/*.sol ./
 #注意Meshchain没有.sol结尾
 babel-node deploy.js Meshchain
 
-#首次添加Meshchain合约，执行babel-node abi_name_service_tool.js add Meshchain，否则执行babel-node abi_name_service_tool.js update Meshchain
+#首次添加Meshchain合约，执行babel-node cns_manager.js add Meshchain，否则执行babel-node cns_manager.js update Meshchain
 
-babel-node abi_name_service_tool.js add Meshchain
+babel-node cns_manager.js add Meshchain
 
 #检查是否添加成功，如果输入的结果中，包含有Meshchain，则代表成功
-babel-node abi_name_service_tool.js list
+babel-node cns_manager.js list
 ```
 
 如下图：
@@ -93,7 +93,8 @@ babel-node abi_name_service_tool.js list
 ### 成功部署多条链后，开始部署proxy：
 
 ```
-git clone https://github.com/FISCO-BCOS/meshchain.git
+# 进入meshchain目录(假设当前目录是FISCO-BCOS/tool)
+cd meshchain
 
 #gradle安装说明，请参照https://gradle.org/install/
 #java安装说明，请参照http://www.oracle.com/technetwork/java/javase/downloads/index.html
@@ -128,9 +129,8 @@ vim applicationContext.xml
 <span id = "config.xml"></span>
 
 ```
-cd meshchain/dist/conf
 
-#config.xml的内容如下
+#修改config.xml
 vim config.xml
 ```
 
