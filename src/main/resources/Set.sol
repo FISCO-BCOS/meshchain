@@ -33,6 +33,10 @@ contract Set{
             
         m_users.push(user);
         m_usermap[user]=block.number;
+        if (m_users.length >= m_warnnum) {
+        	Warn(1,m_setid,"SET Touch Warnnum");
+        }
+
         return true;
     }
     
@@ -93,10 +97,6 @@ contract Set{
     }
 
     function isFull() constant public returns(bool){
-        if( m_users.length >=m_warnnum ){
-            Warn(1,m_setid,"SET Touch Warnnum");
-        }
-        
         if( m_users.length >= m_maxnum )
             return true;
             

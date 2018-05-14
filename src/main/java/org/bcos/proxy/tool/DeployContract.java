@@ -34,13 +34,11 @@ import org.springframework.context.support.ClassPathXmlApplicationContext;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
 /**
@@ -83,7 +81,7 @@ public class DeployContract {
                 nameSetServiceMap.put(setName, wcs);
             }
 
-            Thread.sleep(3000);
+            Thread.sleep(5000L);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -97,15 +95,20 @@ public class DeployContract {
      */
     public static JSONArray readJSONFile(String fileName) throws IOException {
         BufferedReader reader = new BufferedReader(new FileReader(fileName));
-        StringBuilder sb = new StringBuilder();
-        String tmp = null;
-        while((tmp = reader.readLine()) != null) {
-            sb.append(tmp);
-        }
+        try {
+            StringBuilder sb = new StringBuilder();
+            String tmp = null;
+            while((tmp = reader.readLine()) != null) {
+                sb.append(tmp);
+            }
+            JSONArray jsonArray = JSON.parseArray(sb.toString());
+            return jsonArray;
 
-        reader.close();
-        JSONArray jsonArray = JSON.parseArray(sb.toString());
-        return jsonArray;
+        } catch (IOException e) {
+            throw e;
+        } finally {
+            reader.close();
+        }
     }
 
     /**
@@ -386,7 +389,7 @@ public class DeployContract {
                 UserInfo userInfo = queryUserInfo(args[1]);
                 if (userInfo == null) {
                     System.out.println("uid:" + args[1] + " not exist");
-                    return;
+                    System.exit(0);
                 }
 
                 System.out.printf("uid:%s, queryUserInfo get availAssets:%d unAvailAssets: %d, identity:%d, name:%s\n", userInfo.getUid(),
@@ -421,7 +424,7 @@ public class DeployContract {
                 return;
         }
 
-        Thread.sleep(3 * 1000);
+        Thread.sleep(3000L);
         System.exit(0);
     }
 }
