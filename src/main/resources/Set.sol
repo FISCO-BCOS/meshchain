@@ -2,7 +2,8 @@ pragma solidity ^0.4.4;
 
 contract Set{
     event Warn(uint code,uint setid,string msg);
-    
+    event Ret(int code);
+
     bytes32[] public m_users;
     mapping(bytes32=>uint) m_usermap;
     
@@ -32,6 +33,10 @@ contract Set{
             
         m_users.push(user);
         m_usermap[user]=block.number;
+        if (m_users.length >= m_warnnum) {
+        	Warn(1,m_setid,"SET Touch Warnnum");
+        }
+
         return true;
     }
     
@@ -40,7 +45,27 @@ contract Set{
         
     }
     
-    
+    function expandSet(uint max, uint warn) public returns(bool) {
+		if (max < m_maxnum) {
+			Ret(-1);
+			return false;
+		}
+
+		if (warn < m_warnnum) {
+			Ret(-2);
+			return;
+		}
+
+		m_maxnum = max;
+		m_warnnum = warn;
+		Ret(0);
+		return true;
+    }
+
+    function getSetCapacity() constant public returns(uint, uint){
+    	return (m_warnnum, m_maxnum);
+    }
+
     function removeNode(address node) public{
         for( var i=0;i<m_nodelist.length;i++){
             if(m_nodelist[i] == node ){
@@ -72,10 +97,6 @@ contract Set{
     }
 
     function isFull() constant public returns(bool){
-        if( m_users.length >=m_warnnum ){
-            Warn(1,m_setid,"SET Touch Warnnum");
-        }
-        
         if( m_users.length >= m_maxnum )
             return true;
             
