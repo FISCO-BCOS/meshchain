@@ -5,43 +5,43 @@ function deployContractAndStart()
 {
 
     if [ ! -d ./systemcontractv2 ];then
-        echo "目录 ./systemcontractv2 不存在"
+        echo "dir ./systemcontractv2 not exists"
         exit
     fi
 
     if [ ! -d ./tool ];then
-        echo "目录 ./tool 不存在"
+        echo "dir ./tool not esxist"
         exit
     fi
 
 	if [ ! -d ./web3lib ];then
-        echo "目录 ./web3lib 不存在"
+        echo "dir ./web3lib not exists"
         exit
     fi
     for node in `ls | grep "node_"`
     do
         #start eth
-    cd $node
-    chmod a+x fisco-solc
-    dir=`pwd`
-    export PATH=${PATH}:${dir}
-    port=`grep "\"rpcport\":\"[0-9]\+\"" config.json | grep -o "[0-9]\+"`
-    if [ ${port}"" = "" ];then
-        echo "not found rpcport in ${node}/config.json"
-        exit
-    fi
+		cd $node
+		chmod a+x fisco-solc
+		dir=`pwd`
+		export PATH=${PATH}:${dir}
+		port=`grep "\"rpcport\":\"[0-9]\+\"" config.json | grep -o "[0-9]\+"`
+		if [ ${port}"" = "" ];then
+			echo "not found rpcport in ${node}/config.json"
+			exit
+		fi
 
-    pid=`lsof -i :${port} | grep "${port}" | awk '{print $2}'`
-    if [ ${pid}"" != "" ];then
-        echo "${ethName} is running.pid:${pid},kill it and start."
-        kill ${pid}
-    fi
+		pid=`lsof -i :${port} | grep "${port}" | awk '{print $2}'`
+		if [ ${pid}"" != "" ];then
+			echo "${ethName} is running.pid:${pid},kill it and start."
+			kill ${pid}
+		fi
 
-    sh -c "setsid ./${ethName} --config config.json --genesis genesis.json >> .stdout 2>&1 &"
-    cd ..
+		sh -c "setsid ./${ethName} --config config.json --genesis genesis.json >> .stdout 2>&1 &"
+		sleep 3 #for init
+		cd ..
     done
 
-    sleep 3
     ip=`grep "listenip" node_1/config.json | grep -o "[0-9]\+.[0-9]\+.[0-9]\+.[0-9]\+"`
     port=`grep "rpcport" node_1/config.json | grep -o "[0-9]\+"`
 
@@ -65,14 +65,19 @@ function deployContractAndStart()
 
     cd systemcontractv2
     if [ ! -d ./node_modules ];then
-    npm=`which npm`
-    if [ ${npm}"" = "" ];then
-        echo "npm not found in PATH"
-        exit
+		npm=`which npm`
+		if [ ${npm}"" = "" ];then
+			echo "npm not found in PATH"
+			exit
+		fi
+
+		npm install
     fi
 
-    npm install
-    fi
+	if [ ! -d ../web3lib/node_modules ];then
+		currentDir=`pwd`
+		ln -s ${currentDir}/node_modules ../web3lib/node_modules
+	fi
 
     babel-node deploy.js > .contract.address
 
@@ -81,7 +86,7 @@ function deployContractAndStart()
         exit
     fi
 
-    systemContractAddress=`grep "系统代理合约:" .contract.address | awk -F ":" '{print $2}'`
+    systemContractAddress=`grep "SystemProxy address :" .contract.address | awk -F ":" '{print $2}'`
     if [ ${systemContractAddress}"" = "" ];then
         echo "get system address failed"
         exit
