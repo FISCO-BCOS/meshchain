@@ -5,7 +5,7 @@
 
 ```
 git clone https://github.com/FISCO-BCOS/FISCO-BCOS.git
-sh build.sh
+sh FISCO-BCOS/build.sh
 cd FISCO-BCOS/sample
 git clone https://github.com/FISCO-BCOS/meshchain.git
 cp meshchain/script/* ./ && cp meshchain/src/main/resources/*.sol ../tool
@@ -55,7 +55,7 @@ gradle build
 cd dist
 
 #拷贝步骤一生成的proxyConfig.tar.gz到当前目录
-mv ../../proxyConfig.tar.gz ./ && tar -zxvf proxyConfig.tar.gz && cp proxyConfig/* conf/ && rm -rf proxyConfig
+mv ../../proxyConfig.tar.gz ./ && tar -zxvf proxyConfig.tar.gz && cp proxyConfig/* conf/ && rm -rf proxyConfig*
 
 #按需修改conf/log4j2.xml的日志路径，默认/tmp/proxy.log
 
