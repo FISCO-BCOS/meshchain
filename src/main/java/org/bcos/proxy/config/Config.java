@@ -1,6 +1,8 @@
 package org.bcos.proxy.config;
 
 import lombok.Data;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
@@ -10,35 +12,34 @@ import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 import java.io.InputStream;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Created by fisco-dev on 17/8/27.
  */
 public @Data class Config {
 
-    private String privateKey;//发送交易的私钥
-    private String serviceId;//RMB的serviceid
-    private String scenario;//RMB的scenario
-    private String routeAddress;//route的合约地址
-    private List<String> setNameList;//所有set的名字，这个主要是针对applicationContext.xml里面所有orgId完成初始化
-    private String hotChainName;//热点链的名字，对应applicationContext.xml里面orgId=hotChainName完成初始化
-    private String routeChainName;//路由链的名字，对应applicationContext.xml里面orgId=routeChainName完成初始化
+    private static Logger logger = LoggerFactory.getLogger(Config.class);
+
+    private String privateKey;
+    private String routeAddress;
+    private List<String> hotAccountList;
+    private String hotChainName;
+
     public static int timeTaskIntervalSecond = 60;
     public static int enableTimeTask = 0;
 
     private static Config instance;
 
-    private Config(String privateKey, String serviceId, String scenario, String routeAddress, List<String> setNameList, String hotChainName, String routeChainName){
+    private Config(String privateKey, String routeAddress, List<String> hotAccountList, String hotChainName){
         this.privateKey = privateKey;
-        this.serviceId = serviceId;
-        this.scenario = scenario;
         this.routeAddress = routeAddress;
-        this.setNameList = setNameList;
+        this.hotAccountList = hotAccountList;
         this.hotChainName = hotChainName;
-        this.routeChainName = routeChainName;
     }
-
 
     public synchronized static Config getConfig() throws Exception {
         if (instance == null) {
@@ -67,22 +68,6 @@ public @Data class Config {
         Node privateNode = privateNodeList.item(0);
         String privateKey = privateNode.getTextContent();
 
-        String serviceId = "";
-
-        NodeList serviceIdNodeList = configElement.getElementsByTagName("serviceId");
-        if (serviceIdNodeList != null && serviceIdNodeList.getLength() != 0){
-            Node serviceIdNode = serviceIdNodeList.item(0);
-            serviceId = serviceIdNode.getTextContent();
-        }
-
-        String scenario = "";
-
-        NodeList scenarioNodeList = configElement.getElementsByTagName("scenario");
-        if (scenarioNodeList != null && scenarioNodeList.getLength() != 0){
-            Node scenarioNode = scenarioNodeList.item(0);
-            scenario = scenarioNode.getTextContent();
-        }
-
         NodeList routeAddressNodeList = configElement.getElementsByTagName("routeAddress");
         if (routeAddressNodeList == null ||routeAddressNodeList.getLength() == 0){
             throw new ParserConfigurationException("routeAddress is not defined");
@@ -92,32 +77,6 @@ public @Data class Config {
         String routeAddress = routeAddressNode.getTextContent();
 
 
-        NodeList setNameNodeList = configElement.getElementsByTagName("setNameList");
-        if (setNameNodeList == null ||setNameNodeList.getLength() == 0){
-            throw new ParserConfigurationException("setNameList is not defined");
-        }
-
-        Node setNameNode = setNameNodeList.item(0);
-        String setNameListStr = setNameNode.getTextContent();
-
-
-        NodeList hotChainNameNodeList = configElement.getElementsByTagName("hotChainName");
-        if (hotChainNameNodeList == null ||hotChainNameNodeList.getLength() == 0){
-            throw new ParserConfigurationException("hotChainName is not defined");
-        }
-
-        Node hotChainNameNode = hotChainNameNodeList.item(0);
-        String hotChainName = hotChainNameNode.getTextContent();
-
-        NodeList routeChainNameNodeList = configElement.getElementsByTagName("routeChainName");
-        if (routeChainNameNodeList == null ||routeChainNameNodeList.getLength() == 0){
-            throw new ParserConfigurationException("routeChainName is not defined");
-        }
-
-        Node routeChainNameNode = routeChainNameNodeList.item(0);
-        String routeChainName = routeChainNameNode.getTextContent();
-
-
         NodeList timeTaskIntervalNodeList = configElement.getElementsByTagName("timeTaskIntervalSecond");
         if (timeTaskIntervalNodeList != null && timeTaskIntervalNodeList.getLength() != 0){
             Node timeTaskIntervalSecondNode = timeTaskIntervalNodeList.item(0);
@@ -125,7 +84,7 @@ public @Data class Config {
             try {
                 Config.timeTaskIntervalSecond = Integer.parseInt(timeTaskIntervalSecondStr);
             } catch (Exception e) {
-                e.printStackTrace();
+                logger.error("Exception for parseInt", e);
             }
         }
 
@@ -140,9 +99,34 @@ public @Data class Config {
             }
         }
 
-        List<String> setNameList = Arrays.asList(setNameListStr.split(","));
-        Config config = new Config(privateKey, serviceId, scenario, routeAddress, setNameList, hotChainName, routeChainName);
+        NodeList hotAccountNodeList = configElement.getElementsByTagName("hotAccounts");
+        List<String> hotAccountList = new ArrayList<>();
 
+        if (hotAccountNodeList != null){
+            Node hotAccountNode =  hotAccountNodeList.item(0);
+            Map<String, Boolean> filterNameMap = new HashMap<>();
+
+            for(String hotAccount : hotAccountNode.getTextContent().split(",")) {
+                String trimAccount = hotAccount.trim();
+                if ("".equals(trimAccount) || filterNameMap.containsKey(trimAccount)) {
+                    logger.error("hotAccount is empty or duplicated");
+                    continue;
+                }
+
+                filterNameMap.put(trimAccount, true);
+                hotAccountList.add(trimAccount);
+            }
+        }
+
+        NodeList hotChainNameNodeList = configElement.getElementsByTagName("hotChainName");
+        String hotChainName = null;
+
+        if (hotChainNameNodeList != null){
+            Node hotChainNode =  hotChainNameNodeList.item(0);
+            hotChainName = hotChainNode.getTextContent();
+        }
+
+        Config config = new Config(privateKey, routeAddress, hotAccountList, hotChainName);
         return config;
     }
 }
