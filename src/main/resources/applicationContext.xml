@@ -39,35 +39,6 @@ http://www.springframework.org/schema/aop/spring-aop-2.5.xsd">
 	</property>
 </bean>
 
-<bean id="hotService" class="org.bcos.channel.client.Service">
-	<property name="orgID" value="WB" />
-	<property name="threadPool">
-                <bean class="org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor">
-                        <property name="corePoolSize" value="50" />
-                        <property name="maxPoolSize" value="100" />
-                        <property name="queueCapacity" value="500" />
-                        <property name="keepAliveSeconds" value="60" />
-                        <property name="rejectedExecutionHandler">
-                                <bean class="java.util.concurrent.ThreadPoolExecutor.AbortPolicy" />
-                        </property>
-                </bean>
-    </property>
-	<property name="allChannelConnections">
-		<map>
-		<entry key="WB">
-			<bean class="org.bcos.channel.handler.ChannelConnections">
-				<property name="connectionsStr">
-					<list>
-						<value>node1@127.0.0.1:30341</value>
-						<value>node1@127.0.0.1:30342</value>
-					</list>
-				</property>
-			</bean>
-		</entry>
-		</map>
-	</property>
-</bean>
-
 <bean id="set0Service" class="org.bcos.channel.client.Service">
 	<property name="orgID" value="WB" />
 	<property name="threadPool">
@@ -126,4 +97,32 @@ http://www.springframework.org/schema/aop/spring-aop-2.5.xsd">
 	</property>
 </bean>
 
+<bean id="set2Service" class="org.bcos.channel.client.Service">
+    <property name="orgID" value="WB" />
+    <property name="threadPool">
+        <bean class="org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor">
+            <property name="corePoolSize" value="50" />
+            <property name="maxPoolSize" value="100" />
+            <property name="queueCapacity" value="500" />
+            <property name="keepAliveSeconds" value="60" />
+            <property name="rejectedExecutionHandler">
+                <bean class="java.util.concurrent.ThreadPoolExecutor.AbortPolicy" />
+            </property>
+        </bean>
+    </property>
+    <property name="allChannelConnections">
+        <map>
+            <entry key="WB">
+                <bean class="org.bcos.channel.handler.ChannelConnections">
+                    <property name="connectionsStr">
+                        <list>
+                            <value>node1@127.0.0.1:30341</value>
+                            <value>node1@127.0.0.1:30342</value>
+                        </list>
+                    </property>
+                </bean>
+            </entry>
+        </map>
+    </property>
+</bean>
 </beans>
