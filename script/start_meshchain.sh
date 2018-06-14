@@ -4,8 +4,8 @@ ethName="fisco-bcos"
 function deployContractAndStart()
 {
 
-    if [ ! -d ./systemcontractv2 ];then
-        echo "dir ./systemcontractv2 not exists"
+    if [ ! -d ./systemcontract ];then
+        echo "目录 ./systemcontract 不存在"
         exit
     fi
 
@@ -34,10 +34,10 @@ function deployContractAndStart()
 		pid=`lsof -i :${port} | grep "${port}" | awk '{print $2}'`
 		if [ ${pid}"" != "" ];then
 			echo "${ethName} is running.pid:${pid},kill it and start."
-			kill ${pid}
+			kill -9 ${pid}
 		fi
 
-		sh -c "setsid ./${ethName} --config config.json --genesis genesis.json >> .stdout 2>&1 &"
+		sh -c "setsid ./${ethName} --config config.json --genesis genesis.json > .stdout 2>&1 &"
 		sleep 3 #for init
 		cd ..
     done
@@ -63,7 +63,7 @@ function deployContractAndStart()
         exit
     fi
 
-    cd systemcontractv2
+    cd systemcontract
     if [ ! -d ./node_modules ];then
 		npm=`which npm`
 		if [ ${npm}"" = "" ];then
@@ -117,11 +117,11 @@ function deployContractAndStart()
         pid=`lsof -i :${port} | grep "${port}" | awk '{print $2}'`
         if [ ${pid}"" != "" ];then
             echo "start to kill ${ethName} pid:${pid} and start"
-            kill ${pid}
+            kill -9 ${pid}
         fi
-        
-        sh -c "setsid ./${ethName} --config config.json --genesis genesis.json >> .stdout 2>&1 &"
+
         sleep 3
+        sh -c "setsid ./${ethName} --config config.json --genesis genesis.json > .stdout 2>&1 &"
         cd ..
     done
 
@@ -131,10 +131,10 @@ function deployContractAndStart()
     cd tool
 
     if [ ! -d ./node_modules ];then
-    cp ../systemcontractv2/node_modules ./ -R
+    cp ../systemcontract/node_modules ./ -R
     fi
 
-    #cp ../systemcontractv2/config.js ./
+    #cp ../systemcontract/config.js ./
     echo "deploy Meshchain.sol start..."
     babel-node deploy.js Meshchain
 
