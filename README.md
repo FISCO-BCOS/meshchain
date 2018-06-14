@@ -40,8 +40,11 @@ cd web3lib
 #替换 var proxy="http://ip:port"为节点的ip和rpc端口，保存
 vim config.json
 
-# 回到上一层目录的systemcontractv2目录
-cd ../systemcontractv2
+# 回到上一层目录的systemcontract目录
+cd ../systemcontract
+npm install
+ln -s `pwd`/node_modules ../web3lib/node_modules
+ln -s `pwd`/node_modules ../tool/node_modules
 babel-node deploy.js
 ```
 
@@ -227,8 +230,8 @@ response响应:
 ```
 {
 	"code":0,
-	"data":“ok”，
-	“message”:""
+	"data":“”，
+	“message”:"ok"
 }
 ```
 

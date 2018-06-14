@@ -5,34 +5,36 @@
 
 ```
 git clone https://github.com/FISCO-BCOS/FISCO-BCOS.git
-sh FISCO-BCOS/build.sh
-cd FISCO-BCOS/sample
+cd  FISCO-BCOS;sh build.sh
+cd sample
 git clone https://github.com/FISCO-BCOS/meshchain.git
 cp meshchain/script/* ./ && cp meshchain/src/main/resources/*.sol ../tool
-sh init_meshchain.sh 4 1 127.0.0.1 127.0.0.1 127.0.0.1 127.0.0.1
+sh init_meshchain.sh 4 2 127.0.0.1 127.0.0.1 127.0.0.1 127.0.0.1
 ```
 
 步骤二：
 
 ```
 #启动路由链，执行过程需要较长时间，请耐心等待
-tar -zxvf 127.0.0.1_route.tar.gz && rm 127.0.0.1_route.tar.gz
 cd 127.0.0.1_route/
 sh start_meshchain.sh
+#当看到如下图的信息，输入Y，代表deploy success
+```
 
+
+![meshchain_deploy](https://github.com/FISCO-BCOS/meshchain/raw/master/images/meshchain_deploy.png)
+
+```
 #分组链0
-tar -zxvf 127.0.0.1_set0.tar.gz && rm 127.0.0.1_set0.tar.gz
 cd 127.0.0.1_set0/
 sh start_meshchain.sh
 
 #分组链1
-tar -zxvf 127.0.0.1_set1.tar.gz && rm 127.0.0.1_set1.tar.gz
 cd 127.0.0.1_set1/
 sh start_meshchain.sh
 
 
 #分组链2
-tar -zxvf 127.0.0.1_set2.tar.gz && rm 127.0.0.1_set2.tar.gz
 cd 127.0.0.1_set2/
 sh start_meshchain.sh
 
@@ -89,8 +91,8 @@ response响应:
 ```
 {
 	"code":0,
-	"data":“ok”，
-	“message”:""
+	"data":“”，
+	“message”:"ok"
 }
 ```
 
@@ -221,12 +223,12 @@ warn num:3, max num:3
 
 ```
 git clone https://github.com/FISCO-BCOS/FISCO-BCOS.git
-sh build.sh
-cd FISCO-BCOS/sample
+cd  FISCO-BCOS;sh build.sh
+cd sample
 git clone https://github.com/FISCO-BCOS/meshchain.git
-cp script/* ./ 
-
-#其中，链数目>=4 节点数目>=1 后面的ip是表示，ip0部署链0，ip1部署链1等等。默认情况下，链0部署路由链，其他链部署分组链，也称为set链。
+cp meshchain/script/* ./ && cp meshchain/src/main/resources/*.sol ../tool
+ 
+#其中，链数目>=4 1<=节点数目<=4 后面的ip是表示，ip0部署链0，ip1部署链1等等。默认情况下，链0部署路由链，其他链部署分组链，也称为set链。
 sh init_meshchain.sh <链的数目> <每条链的节点数目> <ip0> <ip1>...
 ```
 
