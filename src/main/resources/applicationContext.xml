@@ -10,23 +10,28 @@ http://www.springframework.org/schema/tx
 http://www.springframework.org/schema/tx/spring-tx-2.5.xsd
 http://www.springframework.org/schema/aop
 http://www.springframework.org/schema/aop/spring-aop-2.5.xsd">
+
+<bean id="pool" class="org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor">
+    <property name="corePoolSize" value="50" />
+    <property name="maxPoolSize" value="100" />
+    <property name="queueCapacity" value="500" />
+    <property name="keepAliveSeconds" value="60" />
+    <property name="rejectedExecutionHandler">
+        <bean class="java.util.concurrent.ThreadPoolExecutor.AbortPolicy" />
+    </property>
+</bean>
+
 <bean id="routeService" class="org.bcos.channel.client.Service">
 	<property name="orgID" value="WB" />
-	<property name="threadPool">
-                <bean class="org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor">
-                        <property name="corePoolSize" value="50" />
-                        <property name="maxPoolSize" value="100" />
-                        <property name="queueCapacity" value="500" />
-                        <property name="keepAliveSeconds" value="60" />
-                        <property name="rejectedExecutionHandler">
-                                <bean class="java.util.concurrent.ThreadPoolExecutor.AbortPolicy" />
-                        </property>
-                </bean>
-    </property>
 	<property name="allChannelConnections">
 		<map>
 		<entry key="WB">
 			<bean class="org.bcos.channel.handler.ChannelConnections">
+                <property name="caCertPath" value="classpath:ca.crt" />
+                <property name="clientKeystorePath" value="classpath:client.keystore" />
+                <property name="keystorePassWord" value="123456" />
+                <property name="clientCertPassWord" value="123456" />
+
 				<property name="connectionsStr">
 					<list>
 						<value>node1@127.0.0.1:30339</value>
@@ -41,21 +46,14 @@ http://www.springframework.org/schema/aop/spring-aop-2.5.xsd">
 
 <bean id="set0Service" class="org.bcos.channel.client.Service">
 	<property name="orgID" value="WB" />
-	<property name="threadPool">
-                <bean class="org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor">
-                        <property name="corePoolSize" value="50" />
-                        <property name="maxPoolSize" value="100" />
-                        <property name="queueCapacity" value="500" />
-                        <property name="keepAliveSeconds" value="60" />
-                        <property name="rejectedExecutionHandler">
-                                <bean class="java.util.concurrent.ThreadPoolExecutor.AbortPolicy" />
-                        </property>
-                </bean>
-    </property>
 	<property name="allChannelConnections">
 		<map>
 		<entry key="WB">
 			<bean class="org.bcos.channel.handler.ChannelConnections">
+                <property name="caCertPath" value="classpath:ca.crt" />
+                <property name="clientKeystorePath" value="classpath:client.keystore" />
+                <property name="keystorePassWord" value="123456" />
+                <property name="clientCertPassWord" value="123456" />
 				<property name="connectionsStr">
 					<list>
 						<value>node1@127.0.0.1:30343</value>
@@ -70,21 +68,14 @@ http://www.springframework.org/schema/aop/spring-aop-2.5.xsd">
 
 <bean id="set1Service" class="org.bcos.channel.client.Service">
 	<property name="orgID" value="WB" />
-	<property name="threadPool">
-                <bean class="org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor">
-                        <property name="corePoolSize" value="50" />
-                        <property name="maxPoolSize" value="100" />
-                        <property name="queueCapacity" value="500" />
-                        <property name="keepAliveSeconds" value="60" />
-                        <property name="rejectedExecutionHandler">
-                                <bean class="java.util.concurrent.ThreadPoolExecutor.AbortPolicy" />
-                        </property>
-                </bean>
-    </property>
 	<property name="allChannelConnections">
 		<map>
 		<entry key="WB">
 			<bean class="org.bcos.channel.handler.ChannelConnections">
+                <property name="caCertPath" value="classpath:ca.crt" />
+                <property name="clientKeystorePath" value="classpath:client.keystore" />
+                <property name="keystorePassWord" value="123456" />
+                <property name="clientCertPassWord" value="123456" />
 				<property name="connectionsStr">
 					<list>
 						<value>node1@127.0.0.1:30345</value>
@@ -99,21 +90,14 @@ http://www.springframework.org/schema/aop/spring-aop-2.5.xsd">
 
 <bean id="set2Service" class="org.bcos.channel.client.Service">
     <property name="orgID" value="WB" />
-    <property name="threadPool">
-        <bean class="org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor">
-            <property name="corePoolSize" value="50" />
-            <property name="maxPoolSize" value="100" />
-            <property name="queueCapacity" value="500" />
-            <property name="keepAliveSeconds" value="60" />
-            <property name="rejectedExecutionHandler">
-                <bean class="java.util.concurrent.ThreadPoolExecutor.AbortPolicy" />
-            </property>
-        </bean>
-    </property>
     <property name="allChannelConnections">
         <map>
             <entry key="WB">
                 <bean class="org.bcos.channel.handler.ChannelConnections">
+                    <property name="caCertPath" value="classpath:ca.crt" />
+                    <property name="clientKeystorePath" value="classpath:client.keystore" />
+                    <property name="keystorePassWord" value="123456" />
+                    <property name="clientCertPassWord" value="123456" />
                     <property name="connectionsStr">
                         <list>
                             <value>node1@127.0.0.1:30341</value>

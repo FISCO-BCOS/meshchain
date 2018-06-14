@@ -156,7 +156,7 @@ public class HttpServer extends AbstractHandler {
         }
     }
 
-    private void initSevice() throws InterruptedException {
+    private void initSevice() throws Exception {
 
         //init for route service
         Credentials credentialsRoute = Credentials.create(this.config.getPrivateKey());
@@ -636,7 +636,7 @@ public class HttpServer extends AbstractHandler {
         Random r = new Random();
         BigInteger randomid = new BigInteger(250, r);
         BigInteger blockLimit = wcs.getWeb3j().getBlockNumberCache();
-        RawTransaction rawTransaction = RawTransaction.createTransaction(randomid, gasPrice, gasLimit, blockLimit, "", Numeric.toHexString(jsonStr.getBytes()));
+        RawTransaction rawTransaction = RawTransaction.createTransaction(randomid, gasPrice, gasLimit, blockLimit, "", Numeric.toHexString(jsonStr.getBytes()), BigInteger.ZERO, false);
         String signMsg = Numeric.toHexString(TransactionEncoder.signMessage(rawTransaction, wcs.getCredentials()));
         org.bcos.web3j.protocol.core.Request request =  wcs.getWeb3j().ethSendRawTransaction(signMsg);
         request.setNeedTransCallback(true);
@@ -809,7 +809,7 @@ public class HttpServer extends AbstractHandler {
 
         String data = Numeric.toHexString(jsonObject.toJSONString().getBytes());
 
-        EthCall ethCall = wcs.getWeb3j().ethCall(Transaction.createEthCallTransaction(null, null, data), DefaultBlockParameterName.LATEST).sendAsync().get();
+        EthCall ethCall = wcs.getWeb3j().ethCall(Transaction.createEthCallTransaction(null, null, data, BigInteger.ZERO, false), DefaultBlockParameterName.LATEST).sendAsync().get();
         String value = ethCall.getResult();
         JSONArray array = JSON.parseArray(value);
         if (array.size() == 0) {
@@ -872,7 +872,7 @@ public class HttpServer extends AbstractHandler {
 
         String data = Numeric.toHexString(jsonObject.toJSONString().getBytes());
 
-        EthCall ethCall = web3j.ethCall(Transaction.createEthCallTransaction(null, null, data), DefaultBlockParameterName.LATEST).sendAsync().get();
+        EthCall ethCall = web3j.ethCall(Transaction.createEthCallTransaction(null, null, data, BigInteger.ZERO, false), DefaultBlockParameterName.LATEST).sendAsync().get();
         String value = ethCall.getResult();
         JSONArray array = JSON.parseArray(value);
         if (array.size() != 4) {
@@ -920,7 +920,7 @@ public class HttpServer extends AbstractHandler {
 
         String data = Numeric.toHexString(jsonObject.toJSONString().getBytes());
 
-        EthCall ethCall = web3j.ethCall(Transaction.createEthCallTransaction(null, null, data), DefaultBlockParameterName.LATEST).sendAsync().get();
+        EthCall ethCall = web3j.ethCall(Transaction.createEthCallTransaction(null, null, data, BigInteger.ZERO, false), DefaultBlockParameterName.LATEST).sendAsync().get();
         String value = ethCall.getResult();
         JSONArray array = JSON.parseArray(value);
         if (array.size() == 0) {

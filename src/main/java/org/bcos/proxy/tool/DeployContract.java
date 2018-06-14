@@ -209,7 +209,7 @@ public class DeployContract {
 
         String data = Numeric.toHexString(jsonObject.toJSONString().getBytes());
 
-        EthCall ethCall = web3j.ethCall(Transaction.createEthCallTransaction(null, null, data), DefaultBlockParameterName.LATEST).sendAsync().get();
+        EthCall ethCall = web3j.ethCall(Transaction.createEthCallTransaction(null, null, data, BigInteger.ZERO, false), DefaultBlockParameterName.LATEST).sendAsync().get();
         String value = ethCall.getResult();
         JSONArray array = JSON.parseArray(value);
         if (array.size() == 0) {
