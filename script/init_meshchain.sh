@@ -99,13 +99,19 @@ function generateChain()
     nodedir=${defaultDataDir}
     networkid=${defaultNetworkid}
 
+	dirName=${ip}_${suffix}
+	mkdir -p ${dirName}
+	cd ${dirName}
+	currentDir=`pwd`
     declare -i beginP2pPort=`expr ${p2pPortDict[$ip]}`
+    nodeSampleStr=""
+
     for i in `seq 1 $num`
     do
         idx=$i
 
         mkdir -p node_${idx}
-        cp config.json.template node_${idx}/config.json
+        cp ../config.json.template node_${idx}/config.json
 
         declare -i rpcport=`expr ${rpcPortDict[$ip]}`
         rpcPortDict[$ip]=`expr ${rpcport} + 1`
@@ -145,66 +151,62 @@ function generateChain()
         "initMinerNodes":{initMinerNodes}
         }' > node_${idx}/genesis.json
 
-        cp log.conf.template node_${idx}/log.conf
+		echo "
+		{
+        	\"networkid\":\"${networkid}\",
+            \"nodedir\":\"${currentDir}/node_${idx}/\",
+            \"ip\":\"${ip}\",
+            \"rpcport\":${rpcport},
+            \"p2pport\":${p2pport},
+            \"channelPort\": ${channelPort}
+        }" > ../node_${idx}.sample
 
-        sed -i "s/{nodedir}/.\//g" node_${idx}/log.conf
-
-        #拷贝eth文件
-        cp ../build/eth/${ethName} node_${idx}/
-        cp ../fisco-solc node_${idx}/
-        echo '{"cryptomod":"0","rlpcreatepath":"./network.rlp"}' > node_${idx}/cryptomod.json
-
-        mkdir -p node_${idx}/data
-        mkdir -p node_${idx}/keystore
-
-        cd node_${idx}
-        ./${ethName} --gennetworkrlp cryptomod.json
-        mv network.rlp* data
-        cp ../ca.crt data
-        cp ../server.key data
-        cp ../server.crt data
-        cd ..
+		nodeSampleStr=${nodeSampleStr}" "node_${idx}.sample
+        #copy eth file
+        cp ../../build/eth/${ethName} node_${idx}/
+        cp ../../fisco-solc node_${idx}/
     done
 
-    extrajson=""
-    initMinerNodes=""
+	nodePath=`which node`
+    if [ ${nodePath}"" = "" ];then
+    	echo "node command is not in PATH"
+        exit 0
+    fi
+
+   	cd ..
+    node init.js ${nodeSampleStr}
+    cd -
 
     for i in `seq 1 $num`
     do
         idx=`expr ${i} - 1`
         declare -i p2pport=${beginP2pPort}
-        nodeid=`cat node_${i}/data/network.rlp.pub`
+        nodeid=`cat node_${i}/data/node.nodeid`
         if [ ${nodeid}"" = "" ];then
             echo "nodeid not found"
             exit
         fi
-        extrajson=${extrajson}'{"Nodeid":"'${nodeid}'","Nodedesc": "node_'${idx}'","Agencyinfo": "node_'${idx}'","Peerip": "'${ip}'","Identitytype": 1,"Port":'${p2pport}',"Idx":'${idx}'},'
         initMinerNodes=${initMinerNodes}"\""${nodeid}"\","
         beginP2pPort=`expr ${p2pport} + 1`
     done
 
     declare -i extraLen=${#extrajson}-1
     declare -i minerLen=${#initMinerNodes}-1
-    extrajson="["${extrajson:0:${extraLen}}"]"
     initMinerNodes="["${initMinerNodes:0:${minerLen}}"]"
 
     for i in `seq 1 $num`
     do
         idx=$i
         sed -i "s/{initMinerNodes}/${initMinerNodes}/g" node_${idx}/genesis.json
-        sed -i "s/{nodeextrainfo}/${extrajson}/g" node_${idx}/config.json
     done
 
-    dirName=${ip}_${suffix}
-    mkdir -p ${dirName}
-    mv node_* ${dirName}/
-    cp ../systemcontractv2 ${dirName}/ -R
-    cp ../tool ${dirName}/ -R
-    cp ../web3lib ${dirName}/ -R
-    cp ./start_meshchain.sh ${dirName}
+    cp ../../systemcontract ./ -R
+    cp ../../tool ./ -R
+    cp ../../web3lib ./ -R
+    cp ../start_meshchain.sh ./
     chmod a+x start_meshchain.sh
-    tar -zcvf ${dirName}.tar.gz ${dirName}
-    rm ${dirName} -rf
+
+    cd ..
 }
 
 function generateProxyConfig()
@@ -247,22 +249,16 @@ function generateProxyConfig()
         fi
         echo '
             <bean id="set'${index}'Service" class="org.bcos.channel.client.Service">
-                <property name="threadPool">
-                    <bean class="org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor">
-                        <property name="corePoolSize" value="50" />
-                        <property name="maxPoolSize" value="100" />
-                        <property name="queueCapacity" value="500" />
-                        <property name="keepAliveSeconds" value="60" />
-                        <property name="rejectedExecutionHandler">
-                            <bean class="java.util.concurrent.ThreadPoolExecutor.AbortPolicy" />
-                        </property>
-                    </bean>
-                </property>
                 <property name="orgID" value="WB" />
                 <property name="allChannelConnections">
                     <map>
                     <entry key="WB">
                         <bean class="org.bcos.channel.handler.ChannelConnections">
+                        	<property name="caCertPath" value="classpath:ca.crt" />
+                            <property name="clientKeystorePath" value="classpath:client.keystore" />
+                            <property name="keystorePassWord" value="123456" />
+                            <property name="clientCertPassWord" value="123456" />
+
                             <property name="connectionsStr">
                                 <list>
                                     <value>nodeid@'${ip}':'${lastPort}'</value>
