@@ -12,7 +12,7 @@ targetCompatibility = 1.8
 repositories {
 
     maven {
-    	url ""
+    	url "http://maven.aliyun.com/nexus/content/groups/public/"
     }
     mavenLocal()
     mavenCentral()
@@ -49,22 +49,15 @@ dependencies {
     compile logger,spring,fastjson,httpclient
     runtime logger,spring,fastjson,httpclient
     
-    compile "com.fasterxml.jackson.core:jackson-databind:2.8.8.1"
-    runtime "com.fasterxml.jackson.core:jackson-databind:2.8.8.1"
-    compile 'io.netty:netty-all:4.1.4.Final'
-    runtime 'io.netty:netty-all:4.1.4.Final'
+    compile "com.fasterxml.jackson.core:jackson-databind:2.8.11"
+    runtime "com.fasterxml.jackson.core:jackson-databind:2.8.11"
+    compile 'io.netty:netty-all:4.1.15.Final'
+    runtime 'io.netty:netty-all:4.1.15.Final'
     compile 'io.netty:netty-tcnative:2.0.0.Final'
     runtime 'io.netty:netty-tcnative:2.0.0.Final'
    	compile 'com.google.guava:guava:19.0'
    	runtime 'com.google.guava:guava:19.0'
-   	compile files('lib/web3sdk.jar')
-   	compile files('lib/lombok.jar')
-	compile files('lib/servlet-api.jar')
-	compile files('lib/jetty-all-9.4.7.v20170914-uber.jar')
-	runtime files('lib/web3sdk.jar')
-	runtime files('lib/lombok.jar')
-	runtime files('lib/servlet-api.jar')
-	runtime files('lib/jetty-all-9.4.7.v20170914-uber.jar')
+   	
    	// web3j依赖
    	compile 'org.apache.httpcomponents:httpclient:4.5.2',
             'org.bouncycastle:bcprov-jdk15on:1.54',
@@ -72,6 +65,16 @@ dependencies {
             'com.squareup:javapoet:1.7.0',
             'io.reactivex:rxjava:1.2.4',
 			'com.github.jnr:jnr-unixsocket:0.15'
+			
+    compile files('lib/web3sdk.jar')
+    compile 'org.projectlombok:lombok:1.16.20'
+    compile 'javax.servlet:servlet-api:2.5'
+    compile 'org.eclipse.jetty.aggregate:jetty-all:9.4.8.v20171121'
+    runtime files('lib/web3sdk.jar')
+    runtime 'org.projectlombok:lombok:1.16.20'
+    runtime 'javax.servlet:servlet-api:2.5'
+    runtime 'org.eclipse.jetty.aggregate:jetty-all:9.4.8.v20171121'
+	//testCompile 'junit:junit:4.12'
 }
 
 sourceSets {
