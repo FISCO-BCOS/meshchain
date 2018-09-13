@@ -35,6 +35,7 @@ function deployContractAndStart()
 		if [ ${pid}"" != "" ];then
 			echo "${ethName} is running.pid:${pid},kill it and start."
 			kill -9 ${pid}
+			sleep 3 #for release resources
 		fi
 
 		sh -c "setsid ./${ethName} --config config.json --genesis genesis.json > .stdout 2>&1 &"
@@ -118,9 +119,9 @@ function deployContractAndStart()
         if [ ${pid}"" != "" ];then
             echo "start to kill ${ethName} pid:${pid} and start"
             kill -9 ${pid}
+	    sleep 3 #for release resources
         fi
 
-        sleep 3
         sh -c "setsid ./${ethName} --config config.json --genesis genesis.json > .stdout 2>&1 &"
         cd ..
     done
