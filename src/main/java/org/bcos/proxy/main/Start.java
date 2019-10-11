@@ -20,7 +20,7 @@ public class Start {
             server.start();
             server.join();
         } else {
-            System.out.println("not support server.try -Dserver=http or -Dserver=rmb(only for aliyun)");
+            System.out.println("not support server.try -Dserver=http");
         }
     }
 }
