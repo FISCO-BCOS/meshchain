@@ -68,12 +68,13 @@ dependencies {
 			
     compile files('lib/web3sdk.jar')
     compile 'org.projectlombok:lombok:1.16.20'
+	annotationProcessor 'org.projectlombok:lombok:1.16.20'
     compile 'javax.servlet:servlet-api:2.5'
-    compile 'org.eclipse.jetty.aggregate:jetty-all:9.4.8.v20171121'
+    compile 'org.eclipse.jetty.aggregate:jetty-all:9.4.31.v20200723'
+	runtime 'org.eclipse.jetty.aggregate:jetty-all:9.4.31.v20200723'
     runtime files('lib/web3sdk.jar')
     runtime 'org.projectlombok:lombok:1.16.20'
     runtime 'javax.servlet:servlet-api:2.5'
-    runtime 'org.eclipse.jetty.aggregate:jetty-all:9.4.8.v20171121'
 	//testCompile 'junit:junit:4.12'
 }
 
